@@ -25,23 +25,34 @@ toForm : Ingredient -> Collage.Form
 toForm { img } =
     Element.image size size img |> Collage.toForm
 
+calculateMove : (Float, Float) -> (Float, Float)
+calculateMove (col, row) =
+    let offsetX = (cols-1)/2*(toFloat size)         -- e.g. with 5 columns wide, the origin starts at 2.5, so do (-2)
+        offsetY = (rows-1)/2*(toFloat size)
+        dx = col * (toFloat size) - offsetX
+        dy = -row * (toFloat size) + offsetY
+    in (dx, dy)
+
 addIngredient : (Float, Float) -> Ingredient -> Form -> Form
-addIngredient (x, y) ingredient board =
+addIngredient (col, row) ingredient board =
     let
-        ingredientSize = toFloat size
-        offsetX = -((x - 1) * ingredientSize)/2
-        offsetY = -((y - 1) * ingredientSize)/2
-        dx = x * ingredientSize + offsetX
-        dy = y * ingredientSize + offsetY
+        (dx, dy) = calculateMove(col, row)
         blockForm = toForm ingredient |> move (dx, dy)
+        --blockForm = toForm ingredient |> move (-offsetX, offsetY)
     in group [board, blockForm]
         
 size : Int
 size = 100
 
+cols : Float
+cols = 8
+
+rows : Float
+rows = 6
+
 initialBackground : Form
 initialBackground =
-  let shape = Collage.rect 600 400
+  let shape = Collage.rect (cols*(toFloat size)) (rows*(toFloat size))
       border = outlined (solid Color.black) shape
   in group [filled Color.lightGray shape, border]
 
@@ -49,50 +60,9 @@ initialBackground =
 ---------------
 ---------------
 
-viewportSize : Int
-viewportSize = 240
-
-ingredientSize : Float
-ingredientSize = (toFloat viewportSize) / 2
-
-viewport : Collage.Form
-viewport = square (toFloat viewportSize) |> outlined { defaultLine | width = 3 } 
-
 main = 
-  let screen = addIngredient (100, 100) (Ingredient "Tomato" 4 "piece" "img/tomato.jpg") initialBackground
-  in toHtml <| collage 800 600 [screen]
-
-{-
-  21/2:
-  The hard thing to do here is the translation of the cropped images.
-  When adding an image Element to a Collage, the middle of the image will be placed on the middle of the Collage.
-  So when we want to move the image, this becomes a problem with e.g. the tomate in the upper left corner:
-   - full tomato: moving the middle with moveToOrigin will draw tomato img edges nicely on top of the collage edges
-   - cropped tomate: because this image is smaller, the img and collage edges
-   will not overlap now even though the middle of both images will overlap
-
-    TODO: I think in Tetris they had a way of handling this situation
--}
--- main = 
---     let 
---       tomatoImgsize = 2400
---       halfTomatoSize = round ((toFloat tomatoImgsize) / 2)
---       scale = ingredientSize / (toFloat tomatoImgsize)
---       moveToOrigin = move (-ingredientSize/2, ingredientSize/2) -- moves left-top-corner of img to left-top-corner of grid
---       tomatoScale = Collage.scale scale <| Collage.toForm <| Element.image tomatoImgsize tomatoImgsize "img/tomato.jpg"
---       tomatoMoved = moveToOrigin <| tomatoScale
---       tomatoUL = Collage.toForm <| Element.croppedImage (0,0) halfTomatoSize halfTomatoSize "img/tomato.jpg"
---       tomatoULScale = Collage.scale scale <| tomatoUL
---       cropDx = 3/4*ingredientSize
---       tomatoULMove = move (-cropDx, cropDx) <| tomatoULScale
---       tomatoBR = move (ingredientSize, -ingredientSize) <| moveToOrigin <| Collage.scale scale
---         <| Collage.toForm <| Element.croppedImage (halfTomatoSize, halfTomatoSize) halfTomatoSize halfTomatoSize "img/tomato.jpg"
---     in
---       toHtml <| flow right [
---             collage viewportSize viewportSize [ viewport, tomatoUL           ]
---            ,collage viewportSize viewportSize [ viewport, tomatoULScale      ]
---            ,collage viewportSize viewportSize [ viewport, tomatoULMove       ]
---            ,collage viewportSize viewportSize [ viewport, tomatoScale        ]
---            ,collage viewportSize viewportSize [ viewport, tomatoMoved        ]
---           ,show scale ]
-
+  let tomato = Ingredient "Tomato" 4 "piece" "img/tomato.jpg"
+      screen = addIngredient (cols-1, rows-1) tomato initialBackground
+  in toHtml <| flow right 
+      [ collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
+      , show <| calculateMove (0, 2) ]
