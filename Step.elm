@@ -1,51 +1,54 @@
-module Step exposing (Step, defaultStep)
+module Step exposing (Step, defaultStep, toForm)
 
 import Ingredient exposing (..)
 
-import Collage exposing (Form, collage)
-import Element exposing (toHtml, show, flow, right, down)
+import Collage exposing (Form, collage, move, group)
+import Element exposing (toHtml, show, flow, right, leftAligned)
+import Text exposing (fromString)
 
 
 type alias Step = 
     { ingredients : List Ingredient
     , action : String }
 
-type alias ViewStep = 
-    { step : Step
-    , location : (Float, Float) }
-
 defaultStep : Step
 defaultStep = 
     { ingredients = Ingredient.ingredients
     , action = "Mix together" }
 
-defaultViewStep : ViewStep
-defaultStep =
-    { step = defaultStep
-    , location = ( (toFloat Ingredient.size) / 2,
-                 , (toFloat Ingredient.size) / 2) }
 
-toForm : ViewStep -> (List Int, Form)
-toForm { step, location } =
-    let
-      text = "<action>"
-      ingredientForms = List.map Ingredient.toForm step.ingredients
+calculateLocations : Int -> List Float
+calculateLocations nIngredients =
+  let
       cumulativeSum = List.scanl (+) 0
       iota n = List.repeat (n - 1) 1 |> cumulativeSum
-      translate a = a * Ingredient.size
-      locations = List.map translate <| iota (List.length step.ingredients)
-      move dx = Collage.moveX (toFloat dx)
-    in
-      (locations, Collage.group (List.map2 move locations ingredientForms))
+      translate a = toFloat (a * Ingredient.size)
+  in iota nIngredients |> List.map translate
+      
 
-moveToOrigin : ViewStep -> ViewStep
-moveToOrigin : form
-  move (
+toForm : Step -> Form
+toForm { ingredients, action } =
+    let
+      ingredientForms = List.map Ingredient.toForm ingredients
+      locations = calculateLocations (List.length ingredients)
+      movedIngredients = List.map2 Collage.moveX locations ingredientForms
+      halfSize = (toFloat Ingredient.size) / 2
+      text = fromString action |> leftAligned 
+        |> Collage.toForm |> move (0, -halfSize*1.2)
+    in
+      group <| movedIngredients ++ [text]
+
+addStep : (Float, Float) -> Step -> Form -> Form
+addStep (col, row) step board =
+    let
+        (dx, dy) = Ingredient.calculateMove(col, row)
+        blockForm = toForm step |> move (dx, dy)
+    in Collage.group [board, blockForm]
 
 main = 
-    let
-        (locations, stepForm) = toForm defaultStep
-    in
-        toHtml <| flow down 
-          [ collage 800 400 [stepForm]
-          , show locations ]
+  let screen = addStep (0, 1) defaultStep Ingredient.initialBackground
+  in toHtml <| flow right 
+      [ collage (round (Ingredient.cols*(toFloat size)))
+                (round (Ingredient.rows*(toFloat size))) 
+                [screen]
+      , show (calculateLocations 3) ]

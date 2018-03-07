@@ -1,4 +1,4 @@
-module Ingredient exposing (Ingredient, ingredients, size, toForm)
+module Ingredient exposing (Ingredient, ingredients, calculateMove, initialBackground, toForm, size, cols, rows) 
 
 import Html exposing (text, div, p)
 import Html.Attributes exposing (class)
@@ -38,7 +38,6 @@ addIngredient (col, row) ingredient board =
     let
         (dx, dy) = calculateMove(col, row)
         blockForm = toForm ingredient |> move (dx, dy)
-        --blockForm = toForm ingredient |> move (-offsetX, offsetY)
     in group [board, blockForm]
         
 size : Int
