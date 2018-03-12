@@ -16,6 +16,7 @@ defaultMergeStep : MergeStep
 defaultMergeStep = 
     { steps = 
         [ Step.defaultStep
+        , Step.defaultStep
         , { ingredients =
               [ { name = "Spaghetti", qty = 500, unit = "gram", img = "img/spaghetti.jpg" }
               , { name = "Water", qty = 2, unit = "litre", img = "img/water.jpg" } ]
@@ -26,15 +27,16 @@ calculateStepLocations : Int -> List Float
 calculateStepLocations nSteps =
   let cumulativeSum = List.scanl (+) 0
       iota n = List.repeat (n - 1) 1 |> cumulativeSum
-      translate a = List.foldl (*) 1 [a, (toFloat Ingredient.size),  1.2] -- leave some room for "action"-text
+      translate a = List.foldl (*) -1 [a, (toFloat Ingredient.size),  1.2] -- leave some room for "action"-text
   in iota nSteps |> List.map translate
       
-calculateTextOffset : Int -> (Float, Float)
-calculateTextOffset nSteps =
-    let halfSize = (toFloat Ingredient.size) / 2
-        dx = -0.1 * (toFloat Ingredient.size)
-        dy = -halfSize - (toFloat (nSteps * Ingredient.size)) * 1.2
-    in (dx, dy)
+createOffsetText : Int -> Text.Text -> Form
+createOffsetText nSteps textObj =
+    let text = leftAligned textObj
+        halfSize = (toFloat Ingredient.size) / 2
+        dx = (Element.widthOf text |> toFloat) / 2 - halfSize
+        dy = (toFloat (-1 * nSteps * Ingredient.size)) * 1.2 + halfSize * 0.8
+    in Collage.toForm text |> move (dx, dy) 
 
 
 toForm : MergeStep -> Form
@@ -43,20 +45,23 @@ toForm { steps, action } =
       stepForms = List.map Step.toForm steps
       locations = calculateStepLocations (List.length steps)
       movedSteps = List.map2 Collage.moveY locations stepForms
-      textOffset = calculateTextOffset (List.length steps)
-      text = fromString action |> leftAligned 
-        |> Collage.toForm |> move textOffset
+      text = createOffsetText (List.length steps) (fromString action)
     in
       group <| movedSteps ++ [text]
 
-
+addMergeStep : (Float, Float) -> MergeStep -> Form -> Form
+addMergeStep (col, row) mergeStep board =
+    let
+        (dx, dy) = Ingredient.calculateMove(col, row)
+        blockForm = toForm mergeStep |> move (dx, dy)
+    in group [board, blockForm]
 
 
 main =
-  let screen = toForm defaultMergeStep
+  let screen = addMergeStep (0, 0) defaultMergeStep Ingredient.initialBackground
   in toHtml <| flow right 
       [ collage (round (Ingredient.cols*(toFloat size)))
                 (round (Ingredient.rows*(toFloat size))) 
                 [screen]
-      , show <| calculateTextOffset (List.length defaultMergeStep.steps) ]
+      ]
 
