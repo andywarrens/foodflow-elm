@@ -5,13 +5,18 @@ import Ingredient exposing (cols, rows, size, calculateMove
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 import Util exposing (tupleMap)
 
-import Html exposing (text, div, p)
+import Html exposing (Html, text, div, p)
 import Html.Attributes exposing (class)
+import Html.Events exposing (onClick)
 import Element exposing (toHtml, show, flow, right, down)
 import Collage exposing (Form, move, moveY, collage, toForm, group, solid, square, rect, circle, outlined)
 import Color exposing (red, blue)
 
 import List exposing (singleton, map)
+
+main =
+  Html.beginnerProgram { model = model, view = view, update = update }
+
 
 defaultStep2 : Step
 defaultStep2 = 
@@ -98,8 +103,20 @@ addRecipe (col, row) { recipe } board =
       blockForm = toForm (0, 0) recipe |> move (dx, dy)
   in group [board, recipeStart, blockForm]
 
-main = 
-  let screen = addRecipe (0, 5) saladeKip Ingredient.initialBackground
+----
+
+type alias Model = Recipe
+model : Model
+model = saladeKip
+
+type Msg = Increment | Decrement
+
+update : Msg -> Model -> Model
+update msg model = model
+
+view : Model -> Html Msg
+view model =
+  let screen = addRecipe (0, 5) model Ingredient.initialBackground
   in toHtml <| collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
 
 --- Example recipes

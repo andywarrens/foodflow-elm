@@ -48,15 +48,3 @@ addStep (col, row) step board =
         (dx, dy) = Ingredient.calculateMove(col, row)
         blockForm = toForm step |> move (dx, dy)
     in Collage.group [board, blockForm]
-
-main = 
-  let screen = addStep (0, 1) defaultStep Ingredient.initialBackground
-      bigtext = addStep (0, 0) { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" } Ingredient.initialBackground
-      viewportx = round (Ingredient.cols*(toFloat size))
-      viewporty = round (Ingredient.rows*(toFloat size))
-      viewportx_s = round <| 0.5 * (toFloat viewportx)
-      viewporty_s = round <| 0.5 * (toFloat viewporty)
-  in toHtml <| flow right 
-      [ collage viewportx_s viewporty_s [Collage.scale 0.5 bigtext]
-      , collage viewportx_s viewporty_s [Collage.scale 0.5 screen]
-      , show (calculateLocations 3) ]

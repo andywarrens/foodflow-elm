@@ -56,17 +56,6 @@ initialBackground =
       border = outlined (solid Color.black) shape
   in group [filled Color.lightGray shape, border]
 
----------------
----------------
----------------
-
-main = 
-  let tomato = Ingredient "Tomato" 4 "piece" "img/tomato.jpg"
-      screen = addIngredient (cols-1, rows-1) tomato initialBackground
-  in toHtml <| flow right 
-      [ collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
-      , show <| calculateMove (0, 2) ]
-
 --- Example ingredients
 turkey             = Ingredient "Turkey" 220 "gram" "img/turkey.jpg"
 oliveoil           = Ingredient "Olive Oil" 1 "el" "img/olijfolie.jpg"
