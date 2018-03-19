@@ -45,7 +45,7 @@ size : Int
 size = 100
 
 cols : Float
-cols = 12
+cols = 8
 
 rows : Float
 rows = 6

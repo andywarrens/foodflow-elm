@@ -23,6 +23,7 @@ defaultStep2 =
 type RecipeList = Empty 
                 | Node Step RecipeList          -- ofwel een node met een Step
                 | Merge RecipeList RecipeList   -- ofwel een node die split
+                | BeginMerge RecipeList RecipeList -- puur voor iets andere layout
 
 type alias Recipe = 
     { recipe   : RecipeList
@@ -31,7 +32,7 @@ type alias Recipe =
 
 defaultRecipe : Recipe
 defaultRecipe = 
-  { recipe = Merge (Merge (Node defaultStep (Node defaultStep Empty))
+  { recipe = BeginMerge (Merge (Node defaultStep (Node defaultStep Empty))
                           (Node defaultStep2 Empty))
                    (Node defaultStep2 (Node defaultStep (Merge Empty Empty)))
   , name = "Spaghetti arrabiata"
@@ -46,9 +47,21 @@ toForm (x, y) list =
                           , outlined (solid red) (square 10) ]
     Node step rest  ->
       group [ move (x, y) <| outlined (solid blue) (rect 1 (1.2*blockSize))
+            , move (x+0.5*0.08*blockSize, y) <| outlined (solid blue) (rect (0.08*blockSize) 1)
             , (move (x+blockSize*0.6,y) <| Step.toForm step)
             , (toForm (x, y+blockSize*1.2) rest) ]
     Merge left right -> 
+      let (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
+          stepMargin = maxWidth * blockSize
+          branchMargin = (nBranch+1) * blockSize * 0.5
+          margin = branchMargin + stepMargin
+      in group 
+        [ move (x, y-0.05*blockSize) <| outlined (solid blue) (rect 1 (1.3*blockSize))
+        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid blue) <| rect margin 1
+        , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.3*1.2*blockSize))
+        , (toForm (x       , y+blockSize*1.2) left)
+        , (toForm (x+margin, y+blockSize*1.2) right) ]
+    BeginMerge left right ->
       let (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
           stepMargin = maxWidth * blockSize
           branchMargin = (nBranch+1) * blockSize * 0.5
@@ -70,6 +83,10 @@ recipeWidth list =
                 (restW, branch) = recipeWidth rest
             in (max w restW, branch)
         Merge left right -> 
+            let (restL, branchL) = recipeWidth left
+                (restR, branchR) = recipeWidth right
+            in (restL + restR, 1+branchL+branchR)
+        BeginMerge left right ->
             let (restL, branchL) = recipeWidth left
                 (restR, branchR) = recipeWidth right
             in (restL + restR, 1+branchL+branchR)
@@ -95,6 +112,6 @@ saladeKip =
       riceStep =  { ingredients = [ rijst ], action = "Rijst koken" }
       step1a = Node substep1a (Node substep2a Empty)
       step1b = Node substep1b (Node substep2b Empty)
-  in { recipe   = (Merge step1a (Merge step1b (Node riceStep Empty)))
+  in { recipe   = (BeginMerge step1a (Merge step1b (Node riceStep Empty)))
      , name     = "Salade met gegrilde kip"
      , comments = "" }
