@@ -1,4 +1,5 @@
-module Ingredient exposing (Ingredient, ingredients, calculateMove, initialBackground, toForm, size, cols, rows) 
+module Ingredient exposing (Ingredient, ingredients, calculateMove, initialBackground, toForm, size, cols, rows
+                            ,turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
 import Html exposing (text, div, p)
 import Html.Attributes exposing (class)
@@ -65,3 +66,14 @@ main =
   in toHtml <| flow right 
       [ collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
       , show <| calculateMove (0, 2) ]
+
+--- Example ingredients
+turkey             = Ingredient "Turkey" 220 "gram" "img/turkey.jpg"
+oliveoil           = Ingredient "Olive Oil" 1 "el" "img/olijfolie.jpg"
+pezo               = Ingredient "Salt & Pepper" 1 "snuifje" "img/pezo.jpg"
+artisjokhart       = Ingredient "Artisjokhart" 3 "stuks" "img/artisjokhart.jpg"
+zongedroogdtomaten = Ingredient "Zongedroogde tomaten" 4 "stuks" "img/zongedroogd-tomaten.jpg"
+littlegem          = Ingredient "Little gem" 1 "kropje" "img/littlegem.jpg"
+macadamia          = Ingredient "Macadamia noten" 1 "handvol" "img/macadamia.jpg"
+rijst              = Ingredient "Rice" 1 "zakje" "img/rice.png"
+

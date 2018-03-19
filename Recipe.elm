@@ -1,7 +1,8 @@
 module Recipe exposing (..)
 
 import Step exposing (Step, defaultStep, toForm, width)
-import Ingredient exposing (cols, rows, size, calculateMove)
+import Ingredient exposing (cols, rows, size, calculateMove
+                            , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 import Util exposing (tupleMap)
 
 import Html exposing (text, div, p)
@@ -32,7 +33,7 @@ defaultRecipe : Recipe
 defaultRecipe = 
   { recipe = Merge (Merge (Node defaultStep (Node defaultStep Empty))
                           (Node defaultStep2 Empty))
-                   (Node defaultStep2 (Node defaultStep Empty))
+                   (Node defaultStep2 (Node defaultStep (Merge Empty Empty)))
   , name = "Spaghetti arrabiata"
   , comments = "" }
 
@@ -81,5 +82,19 @@ addRecipe (col, row) { recipe } board =
   in group [board, recipeStart, blockForm]
 
 main = 
-  let screen = addRecipe (0, 5) defaultRecipe Ingredient.initialBackground
+  let screen = addRecipe (0, 5) saladeKip Ingredient.initialBackground
   in toHtml <| collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
+
+--- Example recipes
+saladeKip : Recipe
+saladeKip = 
+  let substep2a = { ingredients = [ turkey, oliveoil, pezo ], action = "Gril 10min" }
+      substep1a = { ingredients = [ artisjokhart ], action = "Gril extra 3min" }
+      substep2b = { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" }
+      substep1b = { ingredients = [ macadamia ], action = "Hak in grove stukjes" }
+      riceStep =  { ingredients = [ rijst ], action = "Rijst koken" }
+      step1a = Node substep1a (Node substep2a Empty)
+      step1b = Node substep1b (Node substep2b Empty)
+  in { recipe   = (Merge step1a (Merge step1b (Node riceStep Empty)))
+     , name     = "Salade met gegrilde kip"
+     , comments = "" }
