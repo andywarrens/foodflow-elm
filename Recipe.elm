@@ -2,6 +2,7 @@ module Recipe exposing (..)
 
 import Step exposing (Step, defaultStep, toForm, width)
 import Ingredient exposing (cols, rows, size, calculateMove)
+import Util exposing (tupleMap)
 
 import Html exposing (text, div, p)
 import Html.Attributes exposing (class)
@@ -29,7 +30,8 @@ type alias Recipe =
 
 defaultRecipe : Recipe
 defaultRecipe = 
-  { recipe = Merge (Node defaultStep Empty)
+  { recipe = Merge (Merge (Node defaultStep (Node defaultStep Empty))
+                          (Node defaultStep2 Empty))
                    (Node defaultStep2 (Node defaultStep Empty))
   , name = "Spaghetti arrabiata"
   , comments = "" }
@@ -46,20 +48,30 @@ toForm (x, y) list =
             , (move (x+blockSize*0.6,y) <| Step.toForm step)
             , (toForm (x, y+blockSize*1.2) rest) ]
     Merge left right -> 
-      let maxWidth = (recipeWidth left) + 1
+      let (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
+          stepMargin = maxWidth * blockSize
+          branchMargin = (nBranch+1) * blockSize * 0.5
+          margin = branchMargin + stepMargin
       in group 
         [ move (x, y+0.35*blockSize) <| outlined (solid blue) (rect 1 (0.5*1.2*blockSize))
-        , move (x+0.5*(toFloat maxWidth)*blockSize, y+0.25*blockSize) <| outlined (solid blue) <| rect ((toFloat maxWidth)*blockSize) 1
-        , move (x+(toFloat maxWidth)*blockSize, y+(0.325*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.25*1.2*blockSize))
-        , (toForm (     x, y+blockSize) left)
-        , (toForm (x+(toFloat maxWidth)*blockSize, y+blockSize) right) ]
+        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid blue) <| rect margin 1
+        , move (x+margin, y+(0.325*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.25*1.2*blockSize))
+        , (toForm (x       , y+blockSize*1.2) left)
+        , (toForm (x+margin, y+blockSize*1.2) right) ]
 
-recipeWidth : RecipeList -> Int
+-- recipeWidth: Returns the number of branches and total blocks width
+recipeWidth : RecipeList -> (Int, Int)
 recipeWidth list =
     case list of
-        Empty -> 0
-        Node step rest -> (Step.width step) + recipeWidth rest
-        Merge left right -> (recipeWidth left) + (recipeWidth right)
+        Empty -> (0, 0)
+        Node step rest -> 
+            let w = Step.width step
+                (restW, branch) = recipeWidth rest
+            in (max w restW, branch)
+        Merge left right -> 
+            let (restL, branchL) = recipeWidth left
+                (restR, branchR) = recipeWidth right
+            in (restL + restR, 1+branchL+branchR)
 
 addRecipe : (Float, Float) -> Recipe -> Form -> Form
 addRecipe (col, row) { recipe } board =
@@ -70,6 +82,4 @@ addRecipe (col, row) { recipe } board =
 
 main = 
   let screen = addRecipe (0, 5) defaultRecipe Ingredient.initialBackground
-  in toHtml <| 
-    collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
-
+  in toHtml <| collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
