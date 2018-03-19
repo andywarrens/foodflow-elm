@@ -1,13 +1,13 @@
 module Recipe exposing (..)
 
-import Step exposing (Step, defaultStep, toForm)
+import Step exposing (Step, defaultStep, toForm, width)
 import Ingredient exposing (cols, rows, size, calculateMove)
 
 import Html exposing (text, div, p)
 import Html.Attributes exposing (class)
 import Element exposing (toHtml, show, flow, right, down)
-import Collage exposing (Form, move, collage, toForm, group, solid, square, outlined)
-import Color exposing (red)
+import Collage exposing (Form, move, moveY, collage, toForm, group, solid, square, rect, circle, outlined)
+import Color exposing (red, blue)
 
 import List exposing (singleton, map)
 
@@ -39,22 +39,37 @@ toForm (x, y) list =
   let blockSize = toFloat size
   in case list of
     Empty           -> 
-      move (x,y) <| outlined (solid red) (square 10)
+      move (x,y) <| group [ moveY (-0.35*blockSize) <| outlined (solid blue) (rect 1 (1.2*0.5*blockSize))
+                          , outlined (solid red) (square 10) ]
     Node step rest  ->
-      group [ (move (x,y) <| Step.toForm step)
-            , (toForm (x, y-blockSize) rest) ]
+      group [ move (x, y) <| outlined (solid blue) (rect 1 (1.2*blockSize))
+            , (move (x+blockSize*0.6,y) <| Step.toForm step)
+            , (toForm (x, y+blockSize*1.2) rest) ]
     Merge left right -> 
-      group [ (toForm (     x, y-blockSize) left)
-            , (toForm (x+blockSize, y-blockSize) right) ]
+      let maxWidth = (recipeWidth left) + 1
+      in group 
+        [ move (x, y+0.35*blockSize) <| outlined (solid blue) (rect 1 (0.5*1.2*blockSize))
+        , move (x+0.5*(toFloat maxWidth)*blockSize, y+0.25*blockSize) <| outlined (solid blue) <| rect ((toFloat maxWidth)*blockSize) 1
+        , move (x+(toFloat maxWidth)*blockSize, y+(0.325*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.25*1.2*blockSize))
+        , (toForm (     x, y+blockSize) left)
+        , (toForm (x+(toFloat maxWidth)*blockSize, y+blockSize) right) ]
+
+recipeWidth : RecipeList -> Int
+recipeWidth list =
+    case list of
+        Empty -> 0
+        Node step rest -> (Step.width step) + recipeWidth rest
+        Merge left right -> (recipeWidth left) + (recipeWidth right)
 
 addRecipe : (Float, Float) -> Recipe -> Form -> Form
 addRecipe (col, row) { recipe } board =
   let (dx, dy) = calculateMove(col, row)
+      recipeStart = outlined (solid blue) (circle 10) |> move (dx, dy)
       blockForm = toForm (0, 0) recipe |> move (dx, dy)
-  in group [board, blockForm]
+  in group [board, recipeStart, blockForm]
 
 main = 
-  let screen = addRecipe (0, 0) defaultRecipe Ingredient.initialBackground
+  let screen = addRecipe (0, 5) defaultRecipe Ingredient.initialBackground
   in toHtml <| 
     collage (round (cols*(toFloat size))) (round (rows*(toFloat size))) [screen]
 

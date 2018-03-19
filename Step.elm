@@ -1,4 +1,4 @@
-module Step exposing (Step, defaultStep, toForm)
+module Step exposing (Step, defaultStep, toForm, width)
 
 import Ingredient exposing (..)
 
@@ -25,6 +25,8 @@ calculateLocations nIngredients =
       translate a = toFloat (a * Ingredient.size)
   in iota nIngredients |> List.map translate
       
+width : Step -> Int
+width { ingredients } = List.length ingredients
 
 toForm : Step -> Form
 toForm { ingredients, action } =
