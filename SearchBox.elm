@@ -1,8 +1,9 @@
-module SearchBox exposing (..)
+module SearchBox exposing (SearchboxMsg, ingredientUrlToHtml)
 
 import Ingredient exposing (Ingredient, turkey, rijst, pezo)
+import Util exposing (stylesheet)
 
-import Html exposing (Html, Attribute, div, img, ul, li, input, text, node)
+import Html exposing (Html, Attribute, div, img, ul, li, input, text)
 import Element exposing (show)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onInput, onClick)
@@ -11,13 +12,13 @@ import Json.Decode as Decode
 
 
 
-main =
-  Html.program
-    { init = init "tomato"
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
+--main =
+--  Html.program
+--    { init = init "tomato"
+--    , view = view
+--    , update = update
+--    , subscriptions = subscriptions
+--    }
 
 -- MODEL
 
@@ -34,13 +35,13 @@ defaultModel =
   , ingredients     = [ turkey, rijst, pezo ]
   , selectedIngredient = Nothing }
 
-init : String -> (Model, Cmd Msg)
+init : String -> (Model, Cmd SearchboxMsg)
 init topic = (defaultModel, fetchImages topic)
 
-toHtml : Ingredient -> Html Msg
+toHtml : Ingredient -> Html SearchboxMsg
 toHtml ing = img [ src ing.img, alt ing.name ] []
 
-ingredientUrlToHtml : String -> Maybe Ingredient -> Url -> Html Msg
+ingredientUrlToHtml : String -> Maybe Ingredient -> Url -> Html SearchboxMsg
 ingredientUrlToHtml searchTopic selected url = 
     let className = case selected of
         Just ingr -> if (ingr.img == url) then "selected-image" else ""
@@ -54,11 +55,11 @@ ingredientUrlToHtml searchTopic selected url =
 -- UPDATE
 
 type alias Url = String
-type Msg = TextInput String
+type SearchboxMsg = TextInput String
          | NewImages (Result Http.Error (List String))
          | SelectIngredient Url
 
-update : Msg -> Model -> (Model, Cmd Msg)
+update : SearchboxMsg -> Model -> (Model, Cmd SearchboxMsg)
 update msg model =
   case msg of
     TextInput newContent ->
@@ -77,7 +78,7 @@ update msg model =
 
 -- VIEW
 
-view : Model -> Html Msg
+view : Model -> Html SearchboxMsg
 view model =
   div [ class "container" ]
     [ stylesheet "//maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css"
@@ -90,14 +91,14 @@ view model =
 
 
 -- SUBSCRIPTIONS
-subscriptions : Model -> Sub Msg
+subscriptions : Model -> Sub SearchboxMsg
 subscriptions model =
   Sub.none
 
 
 
 -- HTTP
-fetchImages : String -> Cmd Msg
+fetchImages : String -> Cmd SearchboxMsg
 fetchImages topic =
   let url = "http://127.0.0.1:8080/?image=" ++ topic
       request = Http.get url decodeUrls
@@ -107,18 +108,3 @@ fetchImages topic =
 decodeUrls : Decode.Decoder (List String)
 decodeUrls =
   Decode.at ["data", "images"] (Decode.list Decode.string)
-
-
-
--- CSS
-stylesheet url =
-    let
-        tag = "link"
-        attrs =
-            [ attribute "rel"       "stylesheet"
-            , attribute "property"  "stylesheet"
-            , attribute "href" url 
-            ]
-        children = []
-    in 
-        node tag attrs children
