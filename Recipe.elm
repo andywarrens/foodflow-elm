@@ -1,10 +1,10 @@
 module Recipe exposing (..)
 
 import Step exposing (Step, defaultStep, toForm, width)
-import Ingredient exposing (Ingredient, cols, rows, size, calculateMove
+import Ingredient exposing (Ingredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
-import Util exposing (tupleMap, stylesheet, stylesheetcdn)
+import Util exposing (tupleMap, size, calculateMove, Url)
 
 import Html exposing (Html, text, div, ul, input, img)
 import Html.Attributes exposing (placeholder, class, alt, src, value)
@@ -17,18 +17,6 @@ import Http
 import Json.Decode as Decode
 
 import List exposing (singleton, map)
-
-main =
-  Html.program
-    { init = (defaultModel "pear", fetchImages "pear")
-    , view = view
-    , update = update
-    , subscriptions = subscriptions
-    }
-
--- SUBSCRIPTIONS
-subscriptions : Model -> Sub Msg
-subscriptions model = Sub.none
 
 type RecipeList = Empty 
                 | Node Step RecipeList          -- ofwel een node met een Step
@@ -100,88 +88,6 @@ addRecipe (col, row) { recipe } board =
       blockForm = toForm (0, 0) recipe |> move (dx, dy)
   in group [board, recipeStart, blockForm]
 
-----
-
--- MODEL
-
-type alias Url = String
-type alias Model =
-  { search             : String
-  , ingredientsUrls    : List String
-  , selectedIngredient : Maybe Ingredient
-  , selectedRecipe     : Recipe }
-
-defaultModel : String -> Model
-defaultModel searchTopic =
-  { search             = searchTopic 
-  , ingredientsUrls    = []
-  , selectedIngredient = Nothing
-  , selectedRecipe     = saladeKip }
-
-type Msg = RecipeMsg String -- dummy for test
-         | SearchboxEvent SearchboxMsg
-type SearchboxMsg = TextInput String
-         | NewImages (Result Http.Error (List String))
-         | SelectIngredient Url
-
-update : Msg -> Model -> (Model, Cmd Msg)
-update msg model =
-  case msg of
-    RecipeMsg str -> (model, Cmd.none)
-    SearchboxEvent evt -> case evt of
-        TextInput newContent ->
-          ({ model | search = newContent }, fetchImages newContent)
-
-        NewImages (Ok newUrls) ->
-          ({ model | ingredientsUrls = newUrls }, Cmd.none)
-
-        NewImages (Err _) ->
-          ({ model | ingredientsUrls = ["error"] }, Cmd.none)
-
-        SelectIngredient url ->
-            let ingr = Ingredient model.search 1 "piece" url
-            in ({ model | selectedIngredient = Just ingr }, Cmd.none)
-
-view : Model -> Html Msg
-view model =
-  let screen = addRecipe (0, 5) model.selectedRecipe Ingredient.initialBackground
-      width = round <| cols*(toFloat size)
-      height = round <| rows*(toFloat size)
-      screenHtml = toHtml <| collage width height [screen] 
-  in div [ class "container" ]
-    [ stylesheetcdn "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
-        "sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" 
-        "anonymous"
-    , stylesheet "css/main.css"
-    , div [ class "row" ]
-      [ div [ class "col-md-8" ] [ screenHtml ]
-      , div [ class "col-md-4" ] 
-        [ input [ placeholder "Search for ingredients", onInput (SearchboxEvent << TextInput), value model.search ] []
-        , ul [] (List.map (ingredientUrlToHtml model.search model.selectedIngredient) model.ingredientsUrls)
-        ] ] ]
-
-ingredientUrlToHtml : String -> Maybe Ingredient -> Url -> Html Msg
-ingredientUrlToHtml searchTopic selected url = 
-    let className = case selected of
-        Just ingr -> if (ingr.img == url) then "selected-image" else ""
-        Nothing   -> ""
-    in img [ src url
-           , alt searchTopic
-           , class className
-           , onClick (SearchboxEvent <| SelectIngredient url)
-           ] []
--- HTTP
-fetchImages : String -> Cmd Msg
-fetchImages topic =
-  let url = "http://127.0.0.1:8080/?image=" ++ topic
-      request = Http.get url decodeUrls
-  in Http.send (SearchboxEvent << NewImages) request
-
-
-decodeUrls : Decode.Decoder (List String)
-decodeUrls =
-  Decode.at ["data", "images"] (Decode.list Decode.string)
-
 --- Example recipes
 saladeKip : Recipe
 saladeKip = 
@@ -202,7 +108,6 @@ defaultStep2 =
         [ { name = "Spaghetti", qty = 500, unit = "gram", img = "img/spaghetti.jpg" }
         , { name = "Water", qty = 2, unit = "litre", img = "img/water.jpg" } ]
     , action = "Boil" }
-
 
 defaultRecipe : Recipe
 defaultRecipe = 

@@ -1,7 +1,38 @@
-module Util exposing (tupleMap, stylesheet, stylesheetcdn)
+module Util exposing (..)
 
 import Html exposing (node)
 import Html.Attributes exposing (attribute)
+
+import Collage exposing (Form, rect, outlined, group, filled, solid)
+import Color exposing (black, lightGray)
+
+-- Layout and types
+----------------------------------------
+
+size : Int
+size = 100
+
+cols : Float
+cols = 8
+
+rows : Float
+rows = 6
+
+type alias Url = String
+
+calculateMove : (Float, Float) -> (Float, Float)
+calculateMove (col, row) =
+    let offsetX = (cols-1)/2*(toFloat size)         -- e.g. with 5 columns wide, the origin starts at 2.5, so do (-2)
+        offsetY = (rows-1)/2*(toFloat size)
+        dx = col * (toFloat size) - offsetX
+        dy = -row * (toFloat size) + offsetY
+    in (dx, dy)
+
+initialBackground : Form
+initialBackground =
+  let shape = rect (cols*(toFloat size)) (rows*(toFloat size))
+      border = outlined (solid black) shape
+  in group [filled lightGray shape, border]
 
 -- Functional utils
 ----------------------------------------

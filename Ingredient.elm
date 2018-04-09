@@ -1,5 +1,7 @@
-module Ingredient exposing (Ingredient, ingredients, calculateMove, initialBackground, toForm, size, cols, rows
-                            ,turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
+module Ingredient exposing (Ingredient, ingredients, toForm,
+                            turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
+
+import Util exposing (size, calculateMove, initialBackground)
 
 import Html exposing (text, div, p)
 import Html.Attributes exposing (class)
@@ -22,17 +24,9 @@ ingredients =
     , Ingredient "Onion" 1 "piece" "img/onion.jpg"
     , Ingredient "Turkey" 220 "gram" "img/turkey.jpg" ]
 
-toForm : Ingredient -> Collage.Form
+toForm : Ingredient -> Form
 toForm { img } =
     Element.image size size img |> Collage.toForm
-
-calculateMove : (Float, Float) -> (Float, Float)
-calculateMove (col, row) =
-    let offsetX = (cols-1)/2*(toFloat size)         -- e.g. with 5 columns wide, the origin starts at 2.5, so do (-2)
-        offsetY = (rows-1)/2*(toFloat size)
-        dx = col * (toFloat size) - offsetX
-        dy = -row * (toFloat size) + offsetY
-    in (dx, dy)
 
 addIngredient : (Float, Float) -> Ingredient -> Form -> Form
 addIngredient (col, row) ingredient board =
@@ -41,21 +35,6 @@ addIngredient (col, row) ingredient board =
         blockForm = toForm ingredient |> move (dx, dy)
     in group [board, blockForm]
         
-size : Int
-size = 100
-
-cols : Float
-cols = 8
-
-rows : Float
-rows = 6
-
-initialBackground : Form
-initialBackground =
-  let shape = Collage.rect (cols*(toFloat size)) (rows*(toFloat size))
-      border = outlined (solid Color.black) shape
-  in group [filled Color.lightGray shape, border]
-
 --- Example ingredients
 turkey             = Ingredient "Turkey" 220 "gram" "img/turkey.jpg"
 oliveoil           = Ingredient "Olive Oil" 1 "el" "img/olijfolie.jpg"

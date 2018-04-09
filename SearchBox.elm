@@ -1,4 +1,4 @@
-module SearchBox exposing (SearchboxMsg, ingredientUrlToHtml)
+module SearchBox exposing (ingredientUrlToHtml)
 
 import Ingredient exposing (Ingredient, turkey, rijst, pezo)
 import Util exposing (stylesheet)
