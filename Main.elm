@@ -6,7 +6,7 @@ import Ingredient exposing (Ingredient)
 import Util exposing (tupleMap, stylesheet, stylesheetcdn, initialBackground,
                       size, cols, rows, Url)
 
-import Html exposing (Html, text, div, ul, input, img)
+import Html exposing (Html, text, div, ul, li, input, img)
 import Html.Attributes exposing (placeholder, class, alt, src, value)
 import Html.Events exposing (onInput, onClick)
 import Element exposing (toHtml, show, flow, right, down)
@@ -82,9 +82,12 @@ view model =
     , stylesheet "css/main.css"
     , div [ class "row" ]
       [ div [ class "col-md-8" ] [ screenHtml ]
-      , div [ class "col-md-4" ] 
-        [ input [ placeholder "Search for ingredients", onInput (SearchboxEvent << TextInput), value model.search ] []
-        , ul [] (List.map (ingredientUrlToHtml model.selectedIngredient) model.ingredientsUrls)
+      , div [ class "col-md-3 offset-md-1" ] 
+        [ input [ placeholder "Search for ingredients"
+                , onInput (SearchboxEvent << TextInput)
+                , value model.search 
+                , class "form-control" ] []
+        , ul [] (List.map (li [] << List.singleton << ingredientUrlToHtml model.selectedIngredient) model.ingredientsUrls)
         ] ] ]
 
 ingredientUrlToHtml : Maybe Ingredient -> Url -> Html Msg
