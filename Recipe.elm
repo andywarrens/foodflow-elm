@@ -11,7 +11,7 @@ import Html.Attributes exposing (placeholder, class, alt, src, value)
 import Html.Events exposing (onInput, onClick)
 import Element exposing (toHtml, show, flow, right, down)
 import Collage exposing (Form, move, moveY, collage, toForm, group, solid, square, rect, circle, outlined)
-import Color exposing (red, blue)
+import Color exposing (Color, red, blue)
 
 import Http
 import Json.Decode as Decode
@@ -28,42 +28,52 @@ type alias Recipe =
     , name     : String
     , comments : String }
 
-toForm : (Float, Float) -> RecipeList -> Form
-toForm (x, y) list =
+toForm : (Float, Float) -> Color -> RecipeList -> Maybe Recipe -> Form
+toForm (x, y) color list highlightRecipe =
   let blockSize = toFloat size
   in case list of
     End           -> 
-      move (x,y) <| group [ moveY (-0.35*blockSize) <| outlined (solid blue) (rect 1 (1.2*0.5*blockSize))
+      move (x,y) <| group [ moveY (-0.35*blockSize) <| outlined (solid color) (rect 1 (1.2*0.5*blockSize))
                           , outlined (solid red) (square 10) ]
     Node step rest  ->
-      group [ move (x, y) <| outlined (solid blue) (rect 1 (1.2*blockSize))
-            , move (x+0.5*0.08*blockSize, y) <| outlined (solid blue) (rect (0.08*blockSize) 1)
+      group [ move (x, y) <| outlined (solid color) (rect 1 (1.2*blockSize))
+            , move (x+0.5*0.08*blockSize, y) <| outlined (solid color) (rect (0.08*blockSize) 1)
             , (move (x+blockSize*0.6,y) <| Step.toForm step)
-            , (toForm (x, y+blockSize*1.2) rest) ]
+            , (toForm (x, y+blockSize*1.2) color rest highlightRecipe) ]
     Merge recipeLeft recipeRight -> 
       let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
           (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
           stepMargin = maxWidth * blockSize
           branchMargin = (nBranch+1) * blockSize * 0.5
           margin = branchMargin + stepMargin
+          (lineColorL, lineColorR) = case highlightRecipe of
+              Nothing -> (blue, blue)
+              Just a -> if (a == recipeLeft) then (red, color)
+                        else if (a == recipeRight) then (color, red)
+                        else (color, color)
       in group 
-        [ move (x, y-0.05*blockSize) <| outlined (solid blue) (rect 1 (1.3*blockSize))
-        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid blue) <| rect margin 1
-        , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.3*1.2*blockSize))
-        , (toForm (x       , y+blockSize*1.2) left)
-        , (toForm (x+margin, y+blockSize*1.2) right) ]
+        [ move (x, y-0.05*blockSize) <| outlined (solid lineColorL) (rect 1 (1.3*blockSize))
+        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
+        , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.3*1.2*blockSize))
+        , (toForm (x       , y+blockSize*1.2) lineColorL left highlightRecipe)
+        , (toForm (x+margin, y+blockSize*1.2) lineColorR right highlightRecipe) ]
     BeginMerge recipeLeft recipeRight -> 
       let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
           (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
           stepMargin = maxWidth * blockSize
           branchMargin = (nBranch+1) * blockSize * 0.5
           margin = branchMargin + stepMargin
+          (lineColorL, lineColorR) = case highlightRecipe of
+              Nothing -> (color, color)
+              Just a -> if (a == recipeLeft) then (red, color)
+                        else if (a == recipeRight) then (color, red)
+                        else (color, color)
       in group 
-        [ move (x, y+0.35*blockSize) <| outlined (solid blue) (rect 1 (0.5*1.2*blockSize))
-        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid blue) <| rect margin 1
-        , move (x+margin, y+(0.325*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.25*1.2*blockSize))
-        , (toForm (x       , y+blockSize*1.2) left)
-        , (toForm (x+margin, y+blockSize*1.2) right) ]
+        [ move (x, y+0.35*blockSize) <| outlined (solid lineColorL) (rect 1 (0.5*1.2*blockSize))
+        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
+        , move (x+margin, y+(0.325*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.25*1.2*blockSize))
+        , (toForm (x       , y+blockSize*1.2) lineColorL left highlightRecipe)
+        , (toForm (x+margin, y+blockSize*1.2) lineColorR right highlightRecipe) ]
 
 -- recipeWidth: Returns the number of branches and total blocks width
 recipeWidth : RecipeList -> (Int, Int)
@@ -83,11 +93,11 @@ recipeWidth list =
                 (restR, branchR) = recipeWidth (.recipe right)
             in (restL + restR, 1+branchL+branchR)
 
-addRecipe : (Float, Float) -> Recipe -> Form -> Form
-addRecipe (col, row) { recipe } board =
+drawRecipe : (Float, Float) -> Recipe -> Maybe Recipe -> Form -> Form
+drawRecipe (col, row) { recipe } selectedSubRecipe board =
   let (dx, dy) = calculateMove(col, row)
       recipeStart = outlined (solid blue) (circle 10) |> move (dx, dy)
-      blockForm = toForm (0, 0) recipe |> move (dx, dy)
+      blockForm = toForm (0, 0) blue recipe selectedSubRecipe |> move (dx, dy)
   in group [board, recipeStart, blockForm]
 
 getSubRecipes : RecipeList -> List (Maybe RecipeList)

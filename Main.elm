@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Recipe exposing (Recipe, addRecipe, saladeKip)
+import Recipe exposing (Recipe, drawRecipe, saladeKip)
 import Ingredient exposing (Ingredient)
 
 import Util exposing (tupleMap, stylesheet, stylesheetcdn, initialBackground,
@@ -8,7 +8,7 @@ import Util exposing (tupleMap, stylesheet, stylesheetcdn, initialBackground,
 
 import Html exposing (Html, text, div, h2, ul, li, input, img, i)
 import Html.Attributes exposing (placeholder, class, alt, src, value)
-import Html.Events exposing (onInput, onClick)
+import Html.Events exposing (onInput, onClick, onMouseOver)
 import Element exposing (toHtml, show, flow, right, down)
 import Collage exposing (Form, move, moveY, collage, toForm, group, solid, square, rect, circle, outlined)
 import Color exposing (red, blue)
@@ -32,19 +32,22 @@ type alias Model =
   { search             : String
   , ingredientsUrls    : List String
   , selectedIngredient : Maybe Ingredient
-  , selectedRecipe     : Recipe }
+  , selectedRecipe     : Recipe 
+  , selectedSubRecipe  : Maybe Recipe }
 
 defaultModel : String -> Model
 defaultModel searchTopic =
   { search             = searchTopic 
   , ingredientsUrls    = []
   , selectedIngredient = Nothing
-  , selectedRecipe     = saladeKip }
+  , selectedRecipe     = saladeKip 
+  , selectedSubRecipe  = Nothing }
 
 -- UPDATE
 ----------------------------------------
 type Msg = RecipeMsg String -- dummy for test
          | SearchboxEvent SearchboxMsg
+         | HoverSubRecipe Recipe
 type SearchboxMsg = TextInput String
          | NewImages (Result Http.Error (List String))
          | SelectIngredient Url
@@ -52,7 +55,10 @@ type SearchboxMsg = TextInput String
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    RecipeMsg str -> (model, Cmd.none)
+    RecipeMsg str -> 
+        (model, Cmd.none)
+    HoverSubRecipe recipe ->
+        ({ model | selectedSubRecipe = Just recipe }, Cmd.none)
     SearchboxEvent evt -> case evt of
         TextInput newContent ->
           ({ model | search = newContent }, fetchImages newContent)
@@ -71,7 +77,7 @@ update msg model =
 ----------------------------------------
 view : Model -> Html Msg
 view model =
-  let screen = addRecipe (0, 5) model.selectedRecipe initialBackground
+  let screen = drawRecipe (0, 5) model.selectedRecipe model.selectedSubRecipe initialBackground
       width = round <| cols*(toFloat size)
       height = round <| rows*(toFloat size)
       screenHtml = toHtml <| collage width height [screen] 
@@ -97,26 +103,37 @@ view model =
       , div [ class "col-md-3" ] 
         [ h2 [] [ text "Steps:" ] 
         , ul [] [ buildStepsView model.selectedRecipe ] ]
+      , div [ class "col-md-3" ] 
+        [ h2 [] [ text "Selected:" ] 
+        , div [] [ case model.selectedSubRecipe of
+                    Nothing -> text ""
+                    Just a  -> text << .name <| a ] ]
       ]
     ]
 
 buildSubRecipes : Recipe -> Html Msg
 buildSubRecipes { recipe } = 
     let subrecipes = Recipe.getSubRecipes recipe
-        subRecipesVisual = List.filter (\a -> case a of
-                                  Nothing -> False 
-                                  Just _  -> True) subrecipes
-                |> List.concatMap (\a -> case a of
-                                  Nothing -> [""]
-                                  Just recipeList  -> extractName recipeList)
-                |> List.map (li [] << singleton << toHtml << show)
+        createLi recipe = li [onMouseOver (HoverSubRecipe recipe)] [text <| .name recipe]
+        subRecipesVisual = 
+            List.filter (\a -> case a of
+                Nothing -> False 
+                Just _  -> True) subrecipes
+            |> List.map (\a -> case a of
+                Nothing -> Recipe.End 
+                Just b  -> b)
+            |> List.concatMap (\a -> case a of 
+                Recipe.End               -> [text "end"]
+                Recipe.Node _ _          -> [text "step"]
+                Recipe.Merge left right      -> [createLi left, createLi right]
+                Recipe.BeginMerge left right -> [createLi left, createLi right])
     in ul [] subRecipesVisual
 
-extractName recipeList = case recipeList of 
-    Recipe.End               -> ["end"]
-    Recipe.Node _ _          -> ["step"]
-    Recipe.Merge left right      -> [.name left, .name right]
-    Recipe.BeginMerge left right -> [.name left, .name right]
+--extractName recipeList = case recipeList of 
+--    Recipe.End               -> ["end"]
+--    Recipe.Node _ _          -> ["step"]
+--    Recipe.Merge left right      -> [.name left, .name right]
+--    Recipe.BeginMerge left right -> [.name left, .name right]
 
 buildStepsView : Recipe -> Html Msg
 buildStepsView { recipe } = 
