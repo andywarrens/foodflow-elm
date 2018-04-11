@@ -16,12 +16,12 @@ import Color exposing (red, blue)
 import Http
 import Json.Decode as Decode
 
-import List exposing (singleton, map)
+import List exposing (singleton, map, append)
 
-type RecipeList = Empty 
-                | Node Step RecipeList          -- ofwel een node met een Step
-                | Merge RecipeList RecipeList   -- ofwel een node die split
-                | BeginMerge RecipeList RecipeList -- puur voor iets andere layout
+type RecipeList = End 
+                | Node Step RecipeList  -- ofwel een node met een Step
+                | Merge Recipe Recipe   -- ofwel een node die split
+                | BeginMerge Recipe Recipe -- puur voor iets andere layout
 
 type alias Recipe = 
     { recipe   : RecipeList
@@ -32,7 +32,7 @@ toForm : (Float, Float) -> RecipeList -> Form
 toForm (x, y) list =
   let blockSize = toFloat size
   in case list of
-    Empty           -> 
+    End           -> 
       move (x,y) <| group [ moveY (-0.35*blockSize) <| outlined (solid blue) (rect 1 (1.2*0.5*blockSize))
                           , outlined (solid red) (square 10) ]
     Node step rest  ->
@@ -40,8 +40,9 @@ toForm (x, y) list =
             , move (x+0.5*0.08*blockSize, y) <| outlined (solid blue) (rect (0.08*blockSize) 1)
             , (move (x+blockSize*0.6,y) <| Step.toForm step)
             , (toForm (x, y+blockSize*1.2) rest) ]
-    Merge left right -> 
-      let (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
+    Merge recipeLeft recipeRight -> 
+      let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
+          (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
           stepMargin = maxWidth * blockSize
           branchMargin = (nBranch+1) * blockSize * 0.5
           margin = branchMargin + stepMargin
@@ -51,8 +52,9 @@ toForm (x, y) list =
         , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid blue) (rect 1 (0.3*1.2*blockSize))
         , (toForm (x       , y+blockSize*1.2) left)
         , (toForm (x+margin, y+blockSize*1.2) right) ]
-    BeginMerge left right ->
-      let (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
+    BeginMerge recipeLeft recipeRight -> 
+      let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
+          (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
           stepMargin = maxWidth * blockSize
           branchMargin = (nBranch+1) * blockSize * 0.5
           margin = branchMargin + stepMargin
@@ -67,18 +69,18 @@ toForm (x, y) list =
 recipeWidth : RecipeList -> (Int, Int)
 recipeWidth list =
     case list of
-        Empty -> (0, 0)
+        End -> (0, 0)
         Node step rest -> 
             let w = Step.width step
                 (restW, branch) = recipeWidth rest
             in (max w restW, branch)
         Merge left right -> 
-            let (restL, branchL) = recipeWidth left
-                (restR, branchR) = recipeWidth right
+            let (restL, branchL) = recipeWidth (.recipe left)
+                (restR, branchR) = recipeWidth (.recipe right)
             in (restL + restR, 1+branchL+branchR)
         BeginMerge left right ->
-            let (restL, branchL) = recipeWidth left
-                (restR, branchR) = recipeWidth right
+            let (restL, branchL) = recipeWidth (.recipe left)
+                (restR, branchR) = recipeWidth (.recipe right)
             in (restL + restR, 1+branchL+branchR)
 
 addRecipe : (Float, Float) -> Recipe -> Form -> Form
@@ -88,6 +90,21 @@ addRecipe (col, row) { recipe } board =
       blockForm = toForm (0, 0) recipe |> move (dx, dy)
   in group [board, recipeStart, blockForm]
 
+getSubRecipes : RecipeList -> List (Maybe RecipeList)
+getSubRecipes recipe = case recipe of
+        End -> singleton Nothing
+        Node _ rest -> getSubRecipes rest
+        Merge left right -> Just (Merge left right) :: append (getSubRecipes (.recipe left)) (getSubRecipes (.recipe right))
+        BeginMerge left right -> Just (Merge left right) :: append (getSubRecipes (.recipe left)) (getSubRecipes (.recipe right))
+
+getSteps : RecipeList -> List (Maybe Step)
+getSteps recipe =
+    case recipe of
+        End -> singleton Nothing
+        Node step rest -> Just step :: getSteps rest
+        Merge left right -> append (getSteps <| .recipe left) (getSteps <| .recipe right)
+        BeginMerge left right -> append (getSteps <| .recipe left) (getSteps <| .recipe right)
+
 --- Example recipes
 saladeKip : Recipe
 saladeKip = 
@@ -96,9 +113,13 @@ saladeKip =
       substep2b = { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" }
       substep1b = { ingredients = [ macadamia ], action = "Hak in grove stukjes" }
       riceStep =  { ingredients = [ rijst ], action = "Rijst koken" }
-      step1a = Node substep1a (Node substep2a Empty)
-      step1b = Node substep1b (Node substep2b Empty)
-  in { recipe   = (BeginMerge step1a (Merge step1b (Node riceStep Empty)))
+      step1a = Node substep1a (Node substep2a End)
+      step1b = Node substep1b (Node substep2b End)
+      subrecipe1a = { recipe= step1a, name= "Groenten grillen", comments = "" }
+      subrecipe2 = { recipe= step1b, name= "Groenten snijden", comments = "" }
+      subrecipe3 = { recipe= (Node riceStep End), name= "Rijst koken", comments = "" }
+      subrecipe2a = { recipe = (Merge subrecipe2 subrecipe3), name = "Combineer groenten en rijst", comments = "" }
+  in { recipe   = (BeginMerge subrecipe1a subrecipe2a)
      , name     = "Salade met gegrilde kip"
      , comments = "" }
 
@@ -111,8 +132,12 @@ defaultStep2 =
 
 defaultRecipe : Recipe
 defaultRecipe = 
-  { recipe = BeginMerge (Merge (Node defaultStep (Node defaultStep Empty))
-                          (Node defaultStep2 Empty))
-                   (Node defaultStep2 (Node defaultStep (Merge Empty Empty)))
-  , name = "Spaghetti arrabiata"
-  , comments = "" }
+    let subrecipe1 = { recipe = (Node defaultStep (Node defaultStep End)),
+                        name = "Meng groenten", comments = "" }
+        subrecipe2 = { recipe = (Node defaultStep2 End)
+                     , name = "Kook spaghetti", comments = "" }
+        dummyrecipe1 = { recipe = Merge subrecipe1 subrecipe2
+                       , name = "Meng groenten & kook spaghetti", comments = "" }
+    in { recipe = BeginMerge dummyrecipe1 subrecipe1
+       , name = "Spaghetti arrabiata"
+       , comments = "" }

@@ -11,3 +11,4 @@ repl-temp-*
 # Vim
 *.swp
 node_modules
+index.html

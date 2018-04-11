@@ -6,7 +6,7 @@ import Ingredient exposing (Ingredient)
 import Util exposing (tupleMap, stylesheet, stylesheetcdn, initialBackground,
                       size, cols, rows, Url)
 
-import Html exposing (Html, text, div, ul, li, input, img)
+import Html exposing (Html, text, div, h2, ul, li, input, img, i)
 import Html.Attributes exposing (placeholder, class, alt, src, value)
 import Html.Events exposing (onInput, onClick)
 import Element exposing (toHtml, show, flow, right, down)
@@ -81,14 +81,53 @@ view model =
         "anonymous"
     , stylesheet "css/main.css"
     , div [ class "row" ]
-      [ div [ class "col-md-8" ] [ screenHtml ]
+      [ div [ class "col-md-8" ] [ h2 [] [ text "Recipe: ", i [] [ text model.selectedRecipe.name ] ], screenHtml ]
       , div [ class "col-md-3 offset-md-1" ] 
-        [ input [ placeholder "Search for ingredients"
+        [ h2 [] [ text "Search:" ]
+        , input [ placeholder "Search for ingredients"
                 , onInput (SearchboxEvent << TextInput)
                 , value model.search 
                 , class "form-control" ] []
         , ul [] (List.map (li [] << List.singleton << ingredientUrlToHtml model.selectedIngredient) model.ingredientsUrls)
-        ] ] ]
+        ] ]
+    , div [ class "row" ] 
+      [ div [ class "col-md-3" ] 
+        [ h2 [] [ text "Subrecipes:" ] 
+        , ul [] [ buildSubRecipes model.selectedRecipe ] ]
+      , div [ class "col-md-3" ] 
+        [ h2 [] [ text "Steps:" ] 
+        , ul [] [ buildStepsView model.selectedRecipe ] ]
+      ]
+    ]
+
+buildSubRecipes : Recipe -> Html Msg
+buildSubRecipes { recipe } = 
+    let subrecipes = Recipe.getSubRecipes recipe
+        subRecipesVisual = List.filter (\a -> case a of
+                                  Nothing -> False 
+                                  Just _  -> True) subrecipes
+                |> List.concatMap (\a -> case a of
+                                  Nothing -> [""]
+                                  Just recipeList  -> extractName recipeList)
+                |> List.map (li [] << singleton << toHtml << show)
+    in ul [] subRecipesVisual
+
+extractName recipeList = case recipeList of 
+    Recipe.End               -> ["end"]
+    Recipe.Node _ _          -> ["step"]
+    Recipe.Merge left right      -> [.name left, .name right]
+    Recipe.BeginMerge left right -> [.name left, .name right]
+
+buildStepsView : Recipe -> Html Msg
+buildStepsView { recipe } = 
+    let getStepName step = case step of
+            Just step -> step.action
+            Nothing   -> ""
+        steps = Recipe.getSteps recipe
+                |> List.map getStepName 
+                |> List.filter (not << (==) "")
+        buildLi = text >> singleton >> li []
+    in ul [] (List.map buildLi steps)
 
 ingredientUrlToHtml : Maybe Ingredient -> Url -> Html Msg
 ingredientUrlToHtml selected url = 
