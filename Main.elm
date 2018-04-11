@@ -125,8 +125,7 @@ buildSubRecipes { recipe } =
             |> List.concatMap (\a -> case a of 
                 Recipe.End               -> [text "end"]
                 Recipe.Node _ _          -> [text "step"]
-                Recipe.Merge left right      -> [createLi left, createLi right]
-                Recipe.BeginMerge left right -> [createLi left, createLi right])
+                Recipe.Merge left right      -> [createLi left, createLi right])
     in ul [] subRecipesVisual
 
 --extractName recipeList = case recipeList of 

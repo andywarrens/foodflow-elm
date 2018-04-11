@@ -21,15 +21,14 @@ import List exposing (singleton, map, append)
 type RecipeList = End 
                 | Node Step RecipeList  -- ofwel een node met een Step
                 | Merge Recipe Recipe   -- ofwel een node die split
-                | BeginMerge Recipe Recipe -- puur voor iets andere layout
 
 type alias Recipe = 
     { recipe   : RecipeList
     , name     : String
     , comments : String }
 
-toForm : (Float, Float) -> Color -> RecipeList -> Maybe Recipe -> Form
-toForm (x, y) color list highlightRecipe =
+toForm : (Float, Float) -> Color -> Bool -> RecipeList -> Maybe Recipe -> Form
+toForm (x, y) color isFirstRun list highlightRecipe =
   let blockSize = toFloat size
   in case list of
     End           -> 
@@ -39,7 +38,7 @@ toForm (x, y) color list highlightRecipe =
       group [ move (x, y) <| outlined (solid color) (rect 1 (1.2*blockSize))
             , move (x+0.5*0.08*blockSize, y) <| outlined (solid color) (rect (0.08*blockSize) 1)
             , (move (x+blockSize*0.6,y) <| Step.toForm step)
-            , (toForm (x, y+blockSize*1.2) color rest highlightRecipe) ]
+            , (toForm (x, y+blockSize*1.2) color False rest highlightRecipe) ]
     Merge recipeLeft recipeRight -> 
       let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
           (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
@@ -51,29 +50,18 @@ toForm (x, y) color list highlightRecipe =
               Just a -> if (a == recipeLeft) then (red, color)
                         else if (a == recipeRight) then (color, red)
                         else (color, color)
-      in group 
-        [ move (x, y-0.05*blockSize) <| outlined (solid lineColorL) (rect 1 (1.3*blockSize))
-        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
-        , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.3*1.2*blockSize))
-        , (toForm (x       , y+blockSize*1.2) lineColorL left highlightRecipe)
-        , (toForm (x+margin, y+blockSize*1.2) lineColorR right highlightRecipe) ]
-    BeginMerge recipeLeft recipeRight -> 
-      let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
-          (maxWidth, nBranch) = recipeWidth left |> tupleMap toFloat
-          stepMargin = maxWidth * blockSize
-          branchMargin = (nBranch+1) * blockSize * 0.5
-          margin = branchMargin + stepMargin
-          (lineColorL, lineColorR) = case highlightRecipe of
-              Nothing -> (color, color)
-              Just a -> if (a == recipeLeft) then (red, color)
-                        else if (a == recipeRight) then (color, red)
-                        else (color, color)
-      in group 
-        [ move (x, y+0.35*blockSize) <| outlined (solid lineColorL) (rect 1 (0.5*1.2*blockSize))
-        , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
-        , move (x+margin, y+(0.325*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.25*1.2*blockSize))
-        , (toForm (x       , y+blockSize*1.2) lineColorL left highlightRecipe)
-        , (toForm (x+margin, y+blockSize*1.2) lineColorR right highlightRecipe) ]
+          mergeBlock = if isFirstRun == False then
+            [ move (x, y-0.05*blockSize) <| outlined (solid lineColorL) (rect 1 (1.3*blockSize))
+            , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
+            , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.3*1.2*blockSize)) ]
+                       else
+            [ move (x, y+0.35*blockSize) <| outlined (solid lineColorL) (rect 1 (0.5*1.2*blockSize))
+            , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
+            , move (x+margin, y+(0.325*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.25*1.2*blockSize)) ]
+      in group <|
+        append mergeBlock
+          [ (toForm (x       , y+blockSize*1.2) lineColorL False left highlightRecipe)
+          , (toForm (x+margin, y+blockSize*1.2) lineColorR False right highlightRecipe) ]
 
 -- recipeWidth: Returns the number of branches and total blocks width
 recipeWidth : RecipeList -> (Int, Int)
@@ -88,16 +76,12 @@ recipeWidth list =
             let (restL, branchL) = recipeWidth (.recipe left)
                 (restR, branchR) = recipeWidth (.recipe right)
             in (restL + restR, 1+branchL+branchR)
-        BeginMerge left right ->
-            let (restL, branchL) = recipeWidth (.recipe left)
-                (restR, branchR) = recipeWidth (.recipe right)
-            in (restL + restR, 1+branchL+branchR)
 
 drawRecipe : (Float, Float) -> Recipe -> Maybe Recipe -> Form -> Form
 drawRecipe (col, row) { recipe } selectedSubRecipe board =
   let (dx, dy) = calculateMove(col, row)
       recipeStart = outlined (solid blue) (circle 10) |> move (dx, dy)
-      blockForm = toForm (0, 0) blue recipe selectedSubRecipe |> move (dx, dy)
+      blockForm = toForm (0, 0) blue True recipe selectedSubRecipe |> move (dx, dy)
   in group [board, recipeStart, blockForm]
 
 getSubRecipes : RecipeList -> List (Maybe RecipeList)
@@ -105,7 +89,6 @@ getSubRecipes recipe = case recipe of
         End -> singleton Nothing
         Node _ rest -> getSubRecipes rest
         Merge left right -> Just (Merge left right) :: append (getSubRecipes (.recipe left)) (getSubRecipes (.recipe right))
-        BeginMerge left right -> Just (Merge left right) :: append (getSubRecipes (.recipe left)) (getSubRecipes (.recipe right))
 
 getSteps : RecipeList -> List (Maybe Step)
 getSteps recipe =
@@ -113,7 +96,6 @@ getSteps recipe =
         End -> singleton Nothing
         Node step rest -> Just step :: getSteps rest
         Merge left right -> append (getSteps <| .recipe left) (getSteps <| .recipe right)
-        BeginMerge left right -> append (getSteps <| .recipe left) (getSteps <| .recipe right)
 
 --- Example recipes
 saladeKip : Recipe
@@ -129,7 +111,7 @@ saladeKip =
       subrecipe2 = { recipe= step1b, name= "Groenten snijden", comments = "" }
       subrecipe3 = { recipe= (Node riceStep End), name= "Rijst koken", comments = "" }
       subrecipe2a = { recipe = (Merge subrecipe2 subrecipe3), name = "Combineer groenten en rijst", comments = "" }
-  in { recipe   = (BeginMerge subrecipe1a subrecipe2a)
+  in { recipe   = (Merge subrecipe1a subrecipe2a)
      , name     = "Salade met gegrilde kip"
      , comments = "" }
 
@@ -148,6 +130,6 @@ defaultRecipe =
                      , name = "Kook spaghetti", comments = "" }
         dummyrecipe1 = { recipe = Merge subrecipe1 subrecipe2
                        , name = "Meng groenten & kook spaghetti", comments = "" }
-    in { recipe = BeginMerge dummyrecipe1 subrecipe1
+    in { recipe = Merge dummyrecipe1 subrecipe1
        , name = "Spaghetti arrabiata"
        , comments = "" }
