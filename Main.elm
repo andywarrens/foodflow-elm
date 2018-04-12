@@ -6,7 +6,7 @@ import Ingredient exposing (Ingredient)
 import Util exposing (tupleMap, stylesheet, stylesheetcdn, initialBackground,
                       size, cols, rows, Url)
 
-import Html exposing (Html, text, div, h2, ul, li, input, img, i)
+import Html exposing (Html, text, div, h2, ul, li, a, input, img, i, hr)
 import Html.Attributes exposing (placeholder, class, alt, src, value)
 import Html.Events exposing (onInput, onClick, onMouseOver)
 import Element exposing (toHtml, show, flow, right, down)
@@ -48,6 +48,7 @@ defaultModel searchTopic =
 type Msg = RecipeMsg String -- dummy for test
          | SearchboxEvent SearchboxMsg
          | HoverSubRecipe Recipe
+         | SelectRecipe Recipe
 type SearchboxMsg = TextInput String
          | NewImages (Result Http.Error (List String))
          | SelectIngredient Url
@@ -59,6 +60,9 @@ update msg model =
         (model, Cmd.none)
     HoverSubRecipe recipe ->
         ({ model | selectedSubRecipe = Just recipe }, Cmd.none)
+    SelectRecipe recipe ->
+        ({ model | selectedRecipe = recipe 
+                 , selectedSubRecipe = Nothing }, Cmd.none)
     SearchboxEvent evt -> case evt of
         TextInput newContent ->
           ({ model | search = newContent }, fetchImages newContent)
@@ -99,15 +103,24 @@ view model =
     , div [ class "row" ] 
       [ div [ class "col-md-3" ] 
         [ h2 [] [ text "Subrecipes:" ] 
-        , ul [] [ buildSubRecipes model.selectedRecipe ] ]
+        , buildSubRecipes model.selectedRecipe ]
       , div [ class "col-md-3" ] 
         [ h2 [] [ text "Steps:" ] 
-        , ul [] [ buildStepsView model.selectedRecipe ] ]
+        , buildStepsView model.selectedRecipe ]
       , div [ class "col-md-3" ] 
         [ h2 [] [ text "Selected:" ] 
         , div [] [ case model.selectedSubRecipe of
                     Nothing -> text ""
                     Just a  -> text << .name <| a ] ]
+      ]
+    , hr [] []
+    , div [ class "row" ] 
+      [ div [ class "col-md-3" ] 
+        [ h2 [] [ text "Recipes:" ] 
+        , ul [] 
+            (List.map (\recipe -> li [] [ a [onClick <| SelectRecipe recipe] [text << .name <| recipe] ])
+              [ saladeKip, Recipe.defaultRecipe ])
+        ]
       ]
     ]
 
