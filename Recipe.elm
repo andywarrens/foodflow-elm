@@ -50,18 +50,13 @@ toForm (x, y) color isFirstRun list highlightRecipe =
               Just a -> if (a == recipeLeft) then (red, color)
                         else if (a == recipeRight) then (color, red)
                         else (color, color)
-          mergeBlock = if isFirstRun == False then
-            [ move (x, y-0.05*blockSize) <| outlined (solid lineColorL) (rect 1 (1.3*blockSize))
-            , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
-            , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.3*1.2*blockSize)) ]
-                       else
-            [ move (x, y+0.35*blockSize) <| outlined (solid lineColorL) (rect 1 (0.5*1.2*blockSize))
-            , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
-            , move (x+margin, y+(0.325*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.25*1.2*blockSize)) ]
+          mergeBlock = if isFirstRun == False then (-0.05, 1.3) else (0.35, 0.5*1.2)
       in group <|
-        append mergeBlock
-          [ (toForm (x       , y+blockSize*1.2) lineColorL False left highlightRecipe)
-          , (toForm (x+margin, y+blockSize*1.2) lineColorR False right highlightRecipe) ]
+          [ mergeBlock |> \(a, b) -> move (x, y+a*blockSize) <| outlined (solid lineColorL) (rect 1 (b*blockSize))
+          , move (x+0.5*margin, y+0.25*blockSize) <| outlined (solid color) <| rect margin 1
+          , move (x+margin, y+(0.35*1.2*blockSize)) <| outlined (solid lineColorR) (rect 1 (0.3*1.2*blockSize))
+          , toForm (x       , y+blockSize*1.2) lineColorL False left highlightRecipe
+          , toForm (x+margin, y+blockSize*1.2) lineColorR False right highlightRecipe ]
 
 -- recipeWidth: Returns the number of branches and total blocks width
 recipeWidth : RecipeList -> (Int, Int)
