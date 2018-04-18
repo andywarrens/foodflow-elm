@@ -85,12 +85,13 @@ getSubRecipes recipe = case recipe of
         Node _ rest -> getSubRecipes rest
         Merge left right -> Just (Merge left right) :: append (getSubRecipes (.recipe left)) (getSubRecipes (.recipe right))
 
-getSteps : RecipeList -> List (Maybe Step)
+getSteps : RecipeList -> List Step
 getSteps recipe =
     case recipe of
-        End -> singleton Nothing
-        Node step rest -> Just step :: getSteps rest
-        Merge left right -> append (getSteps <| .recipe left) (getSteps <| .recipe right)
+        End              -> []
+        Node step rest   -> step :: getSteps rest
+        Merge left right -> append (getSteps <| .recipe left)
+                                   (getSteps <| .recipe right)
 
 --- Example recipes
 saladeKip : Recipe

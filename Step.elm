@@ -1,7 +1,7 @@
-module Step exposing (Step, defaultStep, toForm, width)
+module Step exposing (Step, addStep, defaultStep, toForm, width)
 
 import Ingredient exposing (..)
-import Util exposing (calculateMove, size)
+import Util exposing (calculateMove, size, initialBackground)
 
 import Collage exposing (Form, collage, move, moveX, group, outlined, solid, rect)
 import Element exposing (toHtml, show, flow, right, leftAligned)
@@ -17,15 +17,6 @@ defaultStep : Step
 defaultStep = 
     { ingredients = Ingredient.ingredients
     , action = "Mix together" }
-
-
-calculateLocations : Int -> List Float
-calculateLocations nIngredients =
-  let
-      cumulativeSum = List.scanl (+) 0
-      iota n = List.repeat (n - 1) 1 |> cumulativeSum
-      translate a = toFloat (a * size)
-  in iota nIngredients |> List.map translate
       
 width : Step -> Int
 width { ingredients } = List.length ingredients
@@ -33,15 +24,17 @@ width { ingredients } = List.length ingredients
 toForm : Step -> Form
 toForm { ingredients, action } =
     let
-      ingredientForms = List.map Ingredient.toForm ingredients
-      locations = calculateLocations (List.length ingredients)
-      movedIngredients = List.map2 moveX locations ingredientForms
-      halfSize = (toFloat size) / 2
+      tileSize = toFloat size
+      transformIngredient = Ingredient.toForm >> Collage.scale 0.8 >> Collage.move (-0.2*tileSize, 0.2*tileSize)
+      ingredientForms = 
+      (movedIngredients, _) = List.map transformIngredient ingredients
+         |> List.foldr (\ingr (xs, i) -> ( (moveX (i*tileSize) ingr) :: xs, i+1 ) )
+            ([], 0) ingredientForms
       text = fromString action |> leftAligned 
       textWidth = Element.widthOf text |> toFloat
-      movedText = Collage.toForm text |> move (textWidth*0.5-halfSize, -halfSize*1.2)
+      movedText = Collage.toForm text |> move (0.5*(textWidth-tileSize), -0.3*tileSize)
     in
-      group <| movedIngredients ++ [movedText]
+      group (movedText :: movedIngredients)
 
 addStep : (Float, Float) -> Step -> Form -> Form
 addStep (col, row) step board =
