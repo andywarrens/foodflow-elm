@@ -37,7 +37,7 @@ toForm (x, y) color isFirstRun list highlightRecipe =
     Node step rest  ->
       group [ move (x, y) <| outlined (solid color) (rect 1 (1.2*blockSize))
             , move (x+0.5*0.08*blockSize, y) <| outlined (solid color) (rect (0.08*blockSize) 1)
-            , (move (x+blockSize*0.6,y) <| Step.toForm step)
+            , (move (x+blockSize*0.6,y) <| (Step.toForm >> Tuple.first) step)
             , (toForm (x, y+blockSize*1.2) color False rest highlightRecipe) ]
     Merge recipeLeft recipeRight -> 
       let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 

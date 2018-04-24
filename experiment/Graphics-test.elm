@@ -5,7 +5,7 @@ import Step exposing (Step, toForm)
 import Ingredient exposing (Ingredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
-import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground, size, cols, rows, tupleMap, createOutline)
+import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground, size, cols, rows, tupleMap)
 
 import Html exposing (Html, text, div, h2, ul, li, a, input, img, hr)
 import Html.Attributes exposing (placeholder, class, alt, src, value)
@@ -19,7 +19,6 @@ import Http
 import Json.Decode as Decode
 
 import List exposing (singleton, map)
-import Tuple exposing (first)
 import Either exposing (Either)
 
 
@@ -82,48 +81,59 @@ update msg model =
                   in ({ model | hoverIngredient = Just ingr }, Cmd.none)
                 Nothing -> ({ model | hoverIngredient = Nothing }, Cmd.none)
 
+
 -- VIEW
 ----------------------------------------
 view : Model -> Html Msg
 view model =
-  let createHtml = Step.toForm
-        >> (\(form, width) -> collage (round width) size [form])
-        >> toHtml
-      createLi step = li [onMouseOver (SelectStep step)] [createHtml step]
-      stepsHtml = model.selectedRecipe.recipe
-        |> Recipe.getSteps >> List.map createLi >> ul [class "no-list"]
+  let offsetIngr = -100---size |> toFloat
+      makeSquare = \color -> Collage.square 
+        >> Collage.outlined (Collage.solid color)
+        >> Collage.scale 0.5
+      makeDot = \color -> Collage.circle >> Collage.filled color
+      square = [makeSquare Color.blue 100, makeDot Color.blue 20]
+          |> List.map (Collage.moveX offsetIngr)
+          |> Collage.group 
+      newSquare = Collage.group [makeSquare Color.red 100, makeDot Color.red 5, square]
+
+      substep2b = { ingredients = [ zongedroogdtomaten, littlegem ]
+                  , action = "Hak in stukjes"}
+       |> Step.toForm >> Tuple.first -->> moveX offsetIngr
+       >> (flip (::)) [initialBackground] >> List.reverse
   in div [ class "container" ]
     [ stylesheetcdn "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
         "sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" 
         "anonymous"
     , stylesheet "css/main.css"
-    , div [ class "row" ]
-      [ div [ class "col-md-8" ] 
-        [ h2 [] [ text "Recipe builder: ", input [ value model.selectedRecipe.name ] [] ]
-        , stepsHtml ]
-      , div [ class "col-md-3 offset-md-1" ] 
-        [ h2 [] [ text "Search:" ]
-        , input [ placeholder "Search for ingredients"
-                , onInput (SearchboxEvent << TextInput)
-                , value model.search 
-                , class "form-control" ] []
-        , ul [] (ingredientUrlsToHtml model.hoverIngredient model.ingredientsUrls) ]
-      ]
-    , div [ class "row" ] 
-      [ div [ class "col-md-3" ] 
-        [ h2 [] [ text "Steps:" ] 
-        , buildStepsView model.selectedRecipe model.selectedStep ]
-      ]
-    , hr [] []
-    , div [ class "row" ] 
-      [ div [ class "col-md-3" ] 
-        [ h2 [] [ text "Recipes:" ] 
-        , ul [] 
-            (List.map (\recipe -> li [] [ a [onClick <| SelectRecipe recipe] [text << .name <| recipe] ])
-              [ saladeKip, Recipe.defaultRecipe ])
-        ]
-      ]
-    ]
+    , collage 400 200 substep2b |> toHtml 
+    , collage 400 200 [newSquare] |> toHtml ]
+--    , div [ class "row" ]
+--      [ div [ class "col-md-8" ] 
+--        [ h2 [] [ text "Recipe builder: ", input [ value model.selectedRecipe.name ] [] ]
+--        , screenHtml ]
+--      , div [ class "col-md-3 offset-md-1" ] 
+--        [ h2 [] [ text "Search:" ]
+--        , input [ placeholder "Search for ingredients"
+--                , onInput (SearchboxEvent << TextInput)
+--                , value model.search 
+--                , class "form-control" ] []
+--        , ul [] (ingredientUrlsToHtml model.hoverIngredient model.ingredientsUrls) ]
+--      ]
+--    , div [ class "row" ] 
+--      [ div [ class "col-md-3" ] 
+--        [ h2 [] [ text "Steps:" ] 
+--        , buildStepsView model.selectedRecipe model.selectedStep ]
+--      ]
+--    , hr [] []
+--    , div [ class "row" ] 
+--      [ div [ class "col-md-3" ] 
+--        [ h2 [] [ text "Recipes:" ] 
+--        , ul [] 
+--            (List.map (\recipe -> li [] [ a [onClick <| SelectRecipe recipe] [text << .name <| recipe] ])
+--              [ saladeKip, Recipe.defaultRecipe ])
+--        ]
+--      ]
+--    ]
 
 buildStepsView : Recipe -> Maybe Step -> Html Msg
 buildStepsView { recipe } step = 

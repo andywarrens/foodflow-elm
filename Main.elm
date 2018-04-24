@@ -149,12 +149,8 @@ buildSubRecipes { recipe } =
 
 buildStepsView : Recipe -> Html Msg
 buildStepsView { recipe } = 
-    let getStepName step = case step of
-            Just step -> step.action
-            Nothing   -> ""
-        steps = Recipe.getSteps recipe
-                |> List.map getStepName 
-                |> List.filter (not << (==) "")
+    let steps = Recipe.getSteps recipe
+                |> List.map .action
         buildLi = text >> singleton >> li []
     in ul [] (List.map buildLi steps)
 

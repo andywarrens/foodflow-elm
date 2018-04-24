@@ -29,10 +29,18 @@ calculateMove (col, row) =
     in (dx, dy)
 
 initialBackground : Form
-initialBackground =
-  let shape = rect (cols*(toFloat size)) (rows*(toFloat size))
-      border = outlined (solid black) shape
-  in group [filled lightGray shape, border]
+initialBackground = 
+  let width = cols*(toFloat size) 
+      height = rows*(toFloat size)
+      shape = rect width height
+  in group [filled lightGray shape
+           ,createOutline width height]
+
+createOutline : Float -> Float -> Form
+createOutline width height =
+  let shape = rect width height
+  in outlined (solid black) shape
+
 
 -- Functional utils
 ----------------------------------------

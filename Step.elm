@@ -1,7 +1,7 @@
 module Step exposing (Step, addStep, defaultStep, toForm, width)
 
 import Ingredient exposing (..)
-import Util exposing (calculateMove, size, initialBackground)
+import Util exposing (calculateMove, cols, rows, size, initialBackground)
 
 import Collage exposing (Form, collage, move, moveX, group, outlined, solid, rect)
 import Element exposing (toHtml, show, flow, right, leftAligned)
@@ -21,24 +21,34 @@ defaultStep =
 width : Step -> Int
 width { ingredients } = List.length ingredients
 
-toForm : Step -> Form
+toForm : Step -> (Form, Float)
 toForm { ingredients, action } =
     let
       tileSize = toFloat size
-      transformIngredient = Ingredient.toForm >> Collage.scale 0.8 >> Collage.move (-0.2*tileSize, 0.2*tileSize)
-      ingredientForms = 
-      (movedIngredients, _) = List.map transformIngredient ingredients
-         |> List.foldr (\ingr (xs, i) -> ( (moveX (i*tileSize) ingr) :: xs, i+1 ) )
-            ([], 0) ingredientForms
-      text = fromString action |> leftAligned 
-      textWidth = Element.widthOf text |> toFloat
-      movedText = Collage.toForm text |> move (0.5*(textWidth-tileSize), -0.3*tileSize)
+      scale = 0.8
+      scaleMargin = 0.5*(1-scale) * tileSize
+      transformIngredient = Ingredient.toForm 
+        >> Collage.scale 0.8 >> Collage.move (-scaleMargin, scaleMargin)
+      (shiftedIngredients, _) = List.map transformIngredient ingredients
+         |> List.foldr (\ingr (xs, i) -> ( (moveX (i*scale*tileSize) ingr) :: xs, i+1 ) )
+            ([], 0)
+      text      = action |> fromString >> leftAligned
+      textWidth = text   |> Element.widthOf >> toFloat
+      ingrWidth = tileSize*(toFloat (List.length ingredients))
+      width = max textWidth ingrWidth
+      -- let's move the ingredients so that the centerpoint of the result Form
+      -- is the middle ingredient
+      movedText = text |> 
+        Collage.toForm >> move (0.5*(textWidth-width), -0.42*tileSize)
+      movedIngredients = shiftedIngredients |>
+        group >> moveX (0.5*(tileSize-width))
     in
-      group (movedText :: movedIngredients)
+      (group [movedText, movedIngredients]
+      ,width)
 
-addStep : (Float, Float) -> Step -> Form -> Form
-addStep (col, row) step board =
+addStep : (Float, Float) -> Form -> Step -> Form
+addStep (col, row) board step =
     let
         (dx, dy) = calculateMove(col, row)
-        blockForm = toForm step |> move (dx, dy)
-    in group [board, blockForm]
+        blockForm = toForm >> Tuple.first >> move (dx, dy)
+    in group [board, blockForm step]
