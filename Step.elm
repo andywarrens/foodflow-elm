@@ -29,9 +29,10 @@ toForm { ingredients, action } =
       scaleMargin = 0.5*(1-scale) * tileSize
       transformIngredient = Ingredient.toForm 
         >> Collage.scale 0.8 >> Collage.move (-scaleMargin, scaleMargin)
-      (shiftedIngredients, _) = List.map transformIngredient ingredients
-         |> List.foldr (\ingr (xs, i) -> ( (moveX (i*scale*tileSize) ingr) :: xs, i+1 ) )
-            ([], 0)
+      translateIngredient ingr (xs, i) = ( (moveX (i*scale*tileSize) ingr) :: xs, i+1 ) 
+      (shiftedIngredients, _) = ingredients
+         |> List.map transformIngredient 
+         |> List.foldl translateIngredient ([], 0)
       text      = action |> fromString >> leftAligned
       textWidth = text   |> Element.widthOf >> toFloat
       ingrWidth = tileSize*(toFloat (List.length ingredients))

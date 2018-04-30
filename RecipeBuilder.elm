@@ -1,14 +1,14 @@
 module RecipeBuilder exposing (..)
 
-import Recipe exposing (Recipe, saladeKip)
+import Recipe exposing (Recipe, addStep, changeStep, substep1a, saladeKip, RecipeList(..))
 import Step exposing (Step, toForm)
-import Ingredient exposing (Ingredient
+import Ingredient exposing (Ingredient, emptyIngredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
 import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground, size, cols, rows, tupleMap, createOutline)
 
-import Html exposing (Html, text, div, h2, ul, li, a, input, img, hr)
-import Html.Attributes exposing (placeholder, class, alt, src, value)
+import Html exposing (Html, text, div, h1, h2, ul, li, a, input, img, hr, button)
+import Html.Attributes exposing (placeholder, style, class, alt, src, value)
 import Html.Events exposing (onInput, onClick, onMouseEnter, onMouseLeave, onMouseOver)
 import Element exposing (toHtml, show, right, leftAligned)
 import Text exposing (fromString)
@@ -34,29 +34,31 @@ main =
 -- MODEL
 ----------------------------------------
 type alias Model =
-  { search             : String
-  , ingredientsUrls    : Either (List Url) String
-  , hoverIngredient    : Maybe Ingredient
-  , selectedStep       : Maybe Step
-  , selectedRecipe     : Recipe  }
+  { search              : String
+  , searchedIngredients : Either (List Ingredient) String
+  , hoverIngredient     : Maybe Ingredient
+  , selectedStep        : Maybe Step
+  , currentRecipe       : Recipe  }
 
 defaultModel : String -> Model
 defaultModel searchTopic =
-  { search             = searchTopic 
-  , ingredientsUrls    = Either.Left []
-  , hoverIngredient    = Nothing
-  , selectedStep       = Nothing
-  , selectedRecipe     = saladeKip }
+  { search              = searchTopic
+  , searchedIngredients = Either.Left []
+  , hoverIngredient     = Nothing
+  , selectedStep        = Just substep1a
+  , currentRecipe       = saladeKip }
 
 
 -- UPDATE
 ----------------------------------------
 type Msg = SearchboxEvent SearchboxMsg
-         | SelectStep Step
          | SelectRecipe Recipe
+         | AddStep
+         | SelectStep Step
+         | AddIngredient
 type SearchboxMsg = TextInput String
          | NewImages (Result Http.Error (List String))
-         | HoverIngredient (Maybe Url)
+         | HoverIngredient (Maybe Ingredient)
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
@@ -64,55 +66,68 @@ update msg model =
     SelectStep step -> 
         ({ model | selectedStep = Just step }, Cmd.none)
     SelectRecipe recipe ->
-        ({ model | selectedRecipe = recipe}, Cmd.none)
+        ({ model | currentRecipe = recipe}, Cmd.none)
+    AddStep ->
+        let recipeList = model.currentRecipe.recipe 
+            currentRecipe = model.currentRecipe
+            newRecipeList = addStep currentRecipe.recipe { action= "test", ingredients= [] }
+            newRecipe = { currentRecipe | recipe = newRecipeList }
+        in ({ model | currentRecipe = newRecipe}, Cmd.none)
+    AddIngredient ->
+        case model.selectedStep of
+          Just selectedStep ->
+            case model.hoverIngredient of
+              Just hoverIngredient ->
+                let newIngredients = List.append selectedStep.ingredients [hoverIngredient]
+                    newStep = { selectedStep | ingredients = newIngredients }
+                    recipeList = model.currentRecipe.recipe 
+                    newRecipeList = Recipe.changeStep recipeList selectedStep newStep
+                    currentRecipe = model.currentRecipe
+                    newRecipe = { currentRecipe | recipe = newRecipeList }
+                in ({ model | currentRecipe = newRecipe, selectedStep = Just newStep }, Cmd.none)
+              Nothing -> (model, Cmd.none)
+          Nothing -> (model, Cmd.none)
     SearchboxEvent evt -> case evt of
         TextInput newContent ->
           ({ model | search = newContent }, fetchImages newContent)
 
         NewImages (Ok newUrls) ->
-          ({ model | ingredientsUrls = Either.Left newUrls }, Cmd.none)
+            let urlToIngredient = Ingredient model.search 1 "g"
+                ingredients = List.map urlToIngredient newUrls
+            in ({ model | searchedIngredients = Either.Left ingredients }, Cmd.none)
 
         NewImages (Err _) ->
-          ({ model | ingredientsUrls = Either.Right "error while fetching" }, Cmd.none)
+          ({ model | searchedIngredients = Either.Right "error while fetching" }, Cmd.none)
 
-        HoverIngredient url ->
-            case url of
-                Just a -> 
-                  let ingr = Ingredient model.search 1 "piece" a
-                  in ({ model | hoverIngredient = Just ingr }, Cmd.none)
-                Nothing -> ({ model | hoverIngredient = Nothing }, Cmd.none)
+        HoverIngredient ingr ->
+          ({ model | hoverIngredient = ingr }, Cmd.none)
 
 -- VIEW
 ----------------------------------------
 view : Model -> Html Msg
 view model =
-  let createHtml = Step.toForm
-        >> (\(form, width) -> collage (round width) size [form])
-        >> toHtml
-      createLi step = li [onMouseOver (SelectStep step)] [createHtml step]
-      stepsHtml = model.selectedRecipe.recipe
-        |> Recipe.getSteps >> List.map createLi >> ul [class "no-list"]
-  in div [ class "container" ]
+  div [ class "container" ]
     [ stylesheetcdn "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
         "sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" 
         "anonymous"
     , stylesheet "css/main.css"
     , div [ class "row" ]
+      [ div [ class "col-md-12" ] 
+        [ h1 [] [ text "Recipe builder: " ]
+        , input [ value model.currentRecipe.name ] [] ] ] 
+    , div [ class "row" ]
       [ div [ class "col-md-8" ] 
-        [ h2 [] [ text "Recipe builder: ", input [ value model.selectedRecipe.name ] [] ]
-        , stepsHtml ]
+        [ h2 [] [ text "Edit:" ]
+        , editStepView model 
+        , h2 [] [ text "Steps:" ] 
+        , stepsView model ]
       , div [ class "col-md-3 offset-md-1" ] 
         [ h2 [] [ text "Search:" ]
         , input [ placeholder "Search for ingredients"
                 , onInput (SearchboxEvent << TextInput)
                 , value model.search 
                 , class "form-control" ] []
-        , ul [] (ingredientUrlsToHtml model.hoverIngredient model.ingredientsUrls) ]
-      ]
-    , div [ class "row" ] 
-      [ div [ class "col-md-3" ] 
-        [ h2 [] [ text "Steps:" ] 
-        , buildStepsView model.selectedRecipe model.selectedStep ]
+        , ul [] (ingredientsToHtml model.hoverIngredient model.searchedIngredients) ]
       ]
     , hr [] []
     , div [ class "row" ] 
@@ -124,32 +139,39 @@ view model =
         ]
       ]
     ]
+editStepView : Model -> Html Msg
+editStepView { currentRecipe } =
+      li [] [ button [onClick AddStep] [ text "Add a step"] ]
 
-buildStepsView : Recipe -> Maybe Step -> Html Msg
-buildStepsView { recipe } step = 
-    let steps = Recipe.getSteps recipe
-    |> List.map (\a -> li [class (if step == Just a then "selected-image" else "")]
-                          [.action >> text <| a])
-    in ul [] steps
+stepsView : Model -> Html Msg
+stepsView { selectedStep, currentRecipe } =
+  let createHtml = Step.toForm
+        >> (\(form, width) -> collage (round width) size [form])
+        >> toHtml
+      calculatePosition = List.length >> toFloat >> (\a -> 5+a*0.8*(toFloat size)) >> toString
+      createLi step = 
+          let position = [("left", (calculatePosition step.ingredients) ++ "px")]
+              standard = li [onClick (SelectStep step)] [createHtml step]
+              selected = li [onClick (SelectStep step), class "selected"]
+                [createHtml step, div [style position, class "empty-slot"] [toHtml <| collage size size [emptyIngredient]]]
+          in  if (selectedStep == Just step) then selected else standard
+      stepsLi = currentRecipe.recipe |> Recipe.getSteps >> List.map createLi
+  in ul [class "no-list"] stepsLi
 
-ingredientUrlsToHtml : Maybe Ingredient -> Either (List Url) String -> List (Html Msg)
-ingredientUrlsToHtml sel list =
+ingredientsToHtml : Maybe Ingredient -> Either (List Ingredient) String -> List (Html Msg)
+ingredientsToHtml sel list =
     case list of
         Either.Right error -> [li [] [ text ("error fetching urls: " ++ error) ]]
-        Either.Left urls -> List.map (li [] << List.singleton << ingredientUrlToHtml sel) urls
+        Either.Left ingrs -> List.map (li [onClick AddIngredient] << List.singleton << ingredientToHtml sel) ingrs
 
-ingredientUrlToHtml : Maybe Ingredient -> Url -> Html Msg
-ingredientUrlToHtml sel url = 
-  let (className, displayAlt) = case sel of
-      Nothing -> ("", "")
-      Just a -> ( if (a.img == url) then "selected-image" else ""
-                , if (a.img == url) then a.name else "" )
-  in img [ src url
-         , alt displayAlt
-         , class className
-         , onMouseEnter (SearchboxEvent <| HoverIngredient (Just url))
-         , onMouseLeave (SearchboxEvent <| HoverIngredient (Nothing))
-         ] []
+ingredientToHtml : Maybe Ingredient -> Ingredient -> Html Msg
+ingredientToHtml sel ingr = 
+  img [ src ingr.img
+       , alt ingr.name
+       , class (if (sel == Just ingr) then "selected-image" else "")
+       , onMouseEnter (SearchboxEvent <| HoverIngredient (Just ingr))
+       , onMouseLeave (SearchboxEvent <| HoverIngredient Nothing)
+       ] []
 
 -- HTTP
 ----------------------------------------

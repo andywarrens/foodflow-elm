@@ -1,4 +1,4 @@
-module Ingredient exposing (Ingredient, ingredients, toForm,
+module Ingredient exposing (Ingredient, ingredients, toForm, emptyIngredient,
                             turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
 import Util exposing (size, calculateMove, initialBackground)
@@ -34,6 +34,18 @@ addIngredient (col, row) ingredient board =
         (dx, dy) = calculateMove(col, row)
         blockForm = toForm ingredient |> move (dx, dy)
     in group [board, blockForm]
+
+emptyIngredient : Form
+emptyIngredient = 
+    let tileSize = toFloat size
+        scale = 0.6
+        scaleMargin = 0.5 * (1-scale)*tileSize
+        transform = Collage.scale scale >> Collage.move (-scaleMargin, scaleMargin/2)
+        square = Collage.outlined (Collage.dashed Color.gray) (Collage.square 100)
+        rect w h = Collage.filled Color.gray (Collage.rect w h)
+        thick = 2
+        cross  = group [ rect 20 thick, rect thick 20 ]
+    in group [square, cross] |> transform
         
 --- Example ingredients
 turkey             = Ingredient "Turkey" 220 "gram" "img/turkey.jpg"

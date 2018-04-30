@@ -93,11 +93,31 @@ getSteps recipe =
         Merge left right -> append (getSteps <| .recipe left)
                                    (getSteps <| .recipe right)
 
+addStep : RecipeList -> Step -> RecipeList
+addStep recipe new =
+    case recipe of
+        End              -> Node new End
+        Node step rest   -> Node step (Node new rest)
+        Merge left right -> Node new (Merge left right)
+
+changeStep : RecipeList -> Step -> Step -> RecipeList
+changeStep r select new = case r of
+    End -> End
+    Node step rest -> if (step == select) 
+        then Node new rest
+        else Node step (changeStep rest select new)
+    Merge left right -> 
+        let rLeft  = changeStep left.recipe select new
+            rRight = changeStep right.recipe select new
+        in Merge { left | recipe = rLeft } { right | recipe = rRight }
+
 --- Example recipes
+substep1a : Step
+substep1a = { ingredients = [ artisjokhart ], action = "Gril extra 3min" }
+
 saladeKip : Recipe
 saladeKip = 
   let substep2a = { ingredients = [ turkey, oliveoil, pezo ], action = "Gril 10min" }
-      substep1a = { ingredients = [ artisjokhart ], action = "Gril extra 3min" }
       substep2b = { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" }
       substep1b = { ingredients = [ macadamia ], action = "Hak in grove stukjes" }
       riceStep =  { ingredients = [ rijst ], action = "Rijst koken" }

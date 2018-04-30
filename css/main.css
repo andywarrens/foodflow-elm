@@ -1,3 +1,5 @@
 img { width: 100px; height: 100px }
-.selected-image { border: 1px solid red; box-sizing: border-box; }
+.selected, .selected-image { border: 1px solid red; box-sizing: border-box; }
+.selected { position: relative }
+.empty-slot { position: absolute; top: 0 }
 .no-list { list-style-type: none; margin:0; padding:0 }
