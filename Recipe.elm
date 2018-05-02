@@ -100,6 +100,39 @@ addStep recipe new =
         Node step rest   -> Node step (Node new rest)
         Merge left right -> Node new (Merge left right)
 
+insertStep : Int -> Step -> RecipeList -> RecipeList
+insertStep pos new recipe =
+    if pos == 0 then
+       addStep recipe new
+    else
+       case recipe of 
+         End              -> Node new End
+         Node step rest   -> Node step (insertStep (pos-1) new rest)
+         Merge left right -> 
+           let newLeft = { left | recipe = insertStep (pos-1) new left.recipe }
+           in Merge newLeft right
+
+removeAtStep : Int -> RecipeList -> RecipeList
+removeAtStep pos recipe =
+  case recipe of
+    End              -> End
+    Node step rest   -> 
+      if pos==0 then rest
+      else Node step (removeAtStep (pos-1) rest)
+    Merge left right -> 
+      if pos==0 then left.recipe
+      else let newLeft = { left | recipe = removeAtStep (pos-1) left.recipe }
+           in Merge newLeft right
+
+moveStep : RecipeList -> Step -> Int -> Int -> RecipeList
+moveStep recipe step from to =
+    if from > to then
+      removeAtStep from recipe
+      |> insertStep to step
+    else 
+      insertStep to step recipe
+      |> removeAtStep from
+
 changeStep : RecipeList -> Step -> Step -> RecipeList
 changeStep r select new = case r of
     End -> End
@@ -114,6 +147,16 @@ changeStep r select new = case r of
 --- Example recipes
 substep1a : Step
 substep1a = { ingredients = [ artisjokhart ], action = "Gril extra 3min" }
+
+easySalad : Recipe
+easySalad =
+  let step1 = { ingredients = [ turkey, oliveoil, pezo ], action = "Gril 10min" }
+      step2 = { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" }
+      step3 = { ingredients = [ macadamia ], action = "Hak in grove stukjes" }
+      step4 =  { ingredients = [ rijst ], action = "Rijst koken" }
+  in { recipe   = Node step1 (Node step2 (Node step3 (Node step4 End)))
+     , name     = "Eenvoudige salade met gegrilde kip"
+     , comments = "" }
 
 saladeKip : Recipe
 saladeKip = 

@@ -1,6 +1,6 @@
 module RecipeBuilder exposing (..)
 
-import Recipe exposing (Recipe, addStep, changeStep, substep1a, saladeKip, RecipeList(..))
+import Recipe exposing (Recipe, addStep, moveStep, changeStep, substep1a, easySalad, saladeKip, RecipeList(..))
 import Step exposing (Step, toForm)
 import Ingredient exposing (Ingredient, emptyIngredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
@@ -9,7 +9,7 @@ import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground, size, c
 
 import Html exposing (Html, text, div, h1, h2, ul, li, a, input, img, hr, button)
 import Html.Attributes exposing (placeholder, style, class, alt, src, value)
-import Html.Events exposing (onInput, onClick, onMouseEnter, onMouseLeave, onMouseOver)
+import Html.Events exposing (onInput, onClick, onMouseEnter, onMouseLeave, onMouseOver, onMouseDown, onMouseUp)
 import Element exposing (toHtml, show, right, leftAligned)
 import Text exposing (fromString)
 import Collage exposing (LineCap(..), collage, moveX)
@@ -38,7 +38,11 @@ type alias Model =
   , searchedIngredients : Either (List Ingredient) String
   , hoverIngredient     : Maybe Ingredient
   , selectedStep        : Maybe Step
-  , currentRecipe       : Recipe  }
+  , currentRecipe       : Recipe  
+  , drag                : DraggableState }
+
+defaultDrag : DraggableState
+defaultDrag = { start = Nothing, over = Nothing }
 
 defaultModel : String -> Model
 defaultModel searchTopic =
@@ -46,8 +50,15 @@ defaultModel searchTopic =
   , searchedIngredients = Either.Left []
   , hoverIngredient     = Nothing
   , selectedStep        = Just substep1a
-  , currentRecipe       = saladeKip }
+  , currentRecipe       = easySalad
+  , drag                = defaultDrag }
 
+type alias Draggable =
+    { step : Step
+    , pos  : Int }
+type alias DraggableState = 
+    { start : Maybe Draggable
+    , over  : Maybe Step }
 
 -- UPDATE
 ----------------------------------------
@@ -56,6 +67,9 @@ type Msg = SearchboxEvent SearchboxMsg
          | AddStep
          | SelectStep Step
          | AddIngredient
+         | DragStart Draggable
+         | DragOver Step
+         | DragEnd Draggable
 type SearchboxMsg = TextInput String
          | NewImages (Result Http.Error (List String))
          | HoverIngredient (Maybe Ingredient)
@@ -87,6 +101,24 @@ update msg model =
                 in ({ model | currentRecipe = newRecipe, selectedStep = Just newStep }, Cmd.none)
               Nothing -> (model, Cmd.none)
           Nothing -> (model, Cmd.none)
+    DragStart drag -> 
+        let draggable = model.drag
+            newDraggable = { draggable | start = Just drag }
+        in ({ model | drag = newDraggable }, Cmd.none)
+    DragOver step ->
+        let draggable = model.drag
+            newDraggable = { draggable | over = Just step }
+        in ({ model | drag = newDraggable }, Cmd.none)
+    DragEnd end -> 
+        let recipeList = model.currentRecipe.recipe 
+            currentRecipe = model.currentRecipe
+            newRecipeList = case model.drag.start of 
+                Just begin -> if (end.pos /= begin.pos)
+                    then Recipe.moveStep recipeList begin.step begin.pos end.pos 
+                    else recipeList
+                Nothing   -> recipeList
+            newRecipe = { currentRecipe | recipe = newRecipeList }
+        in ({ model | currentRecipe = newRecipe, drag = defaultDrag }, Cmd.none)
     SearchboxEvent evt -> case evt of
         TextInput newContent ->
           ({ model | search = newContent }, fetchImages newContent)
@@ -135,7 +167,7 @@ view model =
         [ h2 [] [ text "Recipes:" ] 
         , ul [] 
             (List.map (\recipe -> li [] [ a [onClick <| SelectRecipe recipe] [text << .name <| recipe] ])
-              [ saladeKip, Recipe.defaultRecipe ])
+              [ easySalad, saladeKip, Recipe.defaultRecipe ])
         ]
       ]
     ]
@@ -144,18 +176,21 @@ editStepView { currentRecipe } =
       li [] [ button [onClick AddStep] [ text "Add a step"] ]
 
 stepsView : Model -> Html Msg
-stepsView { selectedStep, currentRecipe } =
+stepsView { selectedStep, currentRecipe, drag } =
   let createHtml = Step.toForm
         >> (\(form, width) -> collage (round width) size [form])
         >> toHtml
       calculatePosition = List.length >> toFloat >> (\a -> 5+a*0.8*(toFloat size)) >> toString
-      createLi step = 
-          let position = [("left", (calculatePosition step.ingredients) ++ "px")]
-              standard = li [onClick (SelectStep step)] [createHtml step]
-              selected = li [onClick (SelectStep step), class "selected"]
-                [createHtml step, div [style position, class "empty-slot"] [toHtml <| collage size size [emptyIngredient]]]
-          in  if (selectedStep == Just step) then selected else standard
-      stepsLi = currentRecipe.recipe |> Recipe.getSteps >> List.map createLi
+      createLi pos step = 
+          let position  = [("left", (calculatePosition step.ingredients) ++ "px")]
+              emptySlot = div [style position, class "empty-slot"] [toHtml <| collage size size [emptyIngredient]]
+              draggable = Draggable step pos
+              events = [onMouseDown (DragStart draggable), onMouseEnter (DragOver step), onMouseUp (DragEnd draggable), onClick (SelectStep step)]
+              dragClass = if (drag.start /= Nothing && drag.over == Just step) then "dragging" else ""
+          in if (selectedStep == Just step) 
+            then li (class "selected" :: events) [createHtml step, emptySlot]
+            else li (class dragClass  :: events) [createHtml step]
+      stepsLi = currentRecipe.recipe |> Recipe.getSteps >> List.indexedMap createLi
   in ul [class "no-list"] stepsLi
 
 ingredientsToHtml : Maybe Ingredient -> Either (List Ingredient) String -> List (Html Msg)

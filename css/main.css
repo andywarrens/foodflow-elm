@@ -1,5 +1,6 @@
 img { width: 100px; height: 100px }
-.selected, .selected-image { border: 1px solid red; box-sizing: border-box; }
-.selected { position: relative }
+.dragging, .selected, .selected-image { border: 1px solid red; box-sizing: border-box; }
+.dragging, .selected { position: relative }
+.dragging { border-color: blue }
 .empty-slot { position: absolute; top: 0 }
 .no-list { list-style-type: none; margin:0; padding:0 }
