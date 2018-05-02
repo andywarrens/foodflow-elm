@@ -114,7 +114,7 @@ update msg model =
             currentRecipe = model.currentRecipe
             newRecipeList = case model.drag.start of 
                 Just begin -> if (end.pos /= begin.pos)
-                    then Recipe.moveStep recipeList begin.step begin.pos end.pos 
+                    then Recipe.moveStep recipeList begin.pos end.pos 
                     else recipeList
                 Nothing   -> recipeList
             newRecipe = { currentRecipe | recipe = newRecipeList }

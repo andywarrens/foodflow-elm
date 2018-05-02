@@ -97,7 +97,7 @@ addStep : RecipeList -> Step -> RecipeList
 addStep recipe new =
     case recipe of
         End              -> Node new End
-        Node step rest   -> Node step (Node new rest)
+        Node step rest   -> Node new (Node step rest)
         Merge left right -> Node new (Merge left right)
 
 insertStep : Int -> Step -> RecipeList -> RecipeList
@@ -112,26 +112,25 @@ insertStep pos new recipe =
            let newLeft = { left | recipe = insertStep (pos-1) new left.recipe }
            in Merge newLeft right
 
-removeAtStep : Int -> RecipeList -> RecipeList
+removeAtStep : Int -> RecipeList -> (Maybe Step, RecipeList)
 removeAtStep pos recipe =
   case recipe of
-    End              -> End
+    End              -> (Nothing, End)
     Node step rest   -> 
-      if pos==0 then rest
-      else Node step (removeAtStep (pos-1) rest)
+      if pos==0 then (Just step, rest)
+      else let (resultStep, resultTree) = removeAtStep (pos-1) rest
+           in (resultStep, Node step resultTree)
     Merge left right -> 
-      if pos==0 then left.recipe
-      else let newLeft = { left | recipe = removeAtStep (pos-1) left.recipe }
-           in Merge newLeft right
+      let (resultStep, resultTree) = removeAtStep (pos-1) left.recipe
+          newLeft = { left | recipe = resultTree }
+      in (resultStep, Merge newLeft right)
 
-moveStep : RecipeList -> Step -> Int -> Int -> RecipeList
-moveStep recipe step from to =
-    if from > to then
-      removeAtStep from recipe
-      |> insertStep to step
-    else 
-      insertStep to step recipe
-      |> removeAtStep from
+moveStep : RecipeList -> Int -> Int -> RecipeList
+moveStep recipe from to =
+  let (step, tree) = removeAtStep from recipe
+  in case step of
+      Just x  -> insertStep to x tree
+      Nothing -> tree
 
 changeStep : RecipeList -> Step -> Step -> RecipeList
 changeStep r select new = case r of
@@ -146,15 +145,14 @@ changeStep r select new = case r of
 
 --- Example recipes
 substep1a : Step
-substep1a = { ingredients = [ artisjokhart ], action = "Gril extra 3min" }
+substep1a = { ingredients = [ turkey, oliveoil, pezo ], action = "0. Gril 10min" }
 
 easySalad : Recipe
 easySalad =
-  let step1 = { ingredients = [ turkey, oliveoil, pezo ], action = "Gril 10min" }
-      step2 = { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" }
-      step3 = { ingredients = [ macadamia ], action = "Hak in grove stukjes" }
-      step4 =  { ingredients = [ rijst ], action = "Rijst koken" }
-  in { recipe   = Node step1 (Node step2 (Node step3 (Node step4 End)))
+  let step2 = { ingredients = [ zongedroogdtomaten, littlegem ], action = "1. Snijd in stukjes en reepjes" }
+      step3 = { ingredients = [ macadamia ], action = "2. Hak in grove stukjes" }
+      step4 =  { ingredients = [ rijst ], action = "3. Rijst koken" }
+  in { recipe   = Node substep1a (Node step2 (Node step3 (Node step4 End)))
      , name     = "Eenvoudige salade met gegrilde kip"
      , comments = "" }
 
