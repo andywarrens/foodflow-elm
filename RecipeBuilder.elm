@@ -42,7 +42,7 @@ type alias Model =
   , drag                : DraggableState }
 
 defaultDrag : DraggableState
-defaultDrag = { start = Nothing, over = Nothing }
+defaultDrag = { start = Nothing }
 
 defaultModel : String -> Model
 defaultModel searchTopic =
@@ -57,8 +57,8 @@ type alias Draggable =
     { step : Step
     , pos  : Int }
 type alias DraggableState = 
-    { start : Maybe Draggable
-    , over  : Maybe Step }
+    { start : Maybe Draggable }
+    
 
 -- UPDATE
 ----------------------------------------
@@ -68,8 +68,8 @@ type Msg = SearchboxEvent SearchboxMsg
          | SelectStep Step
          | AddIngredient
          | DragStart Draggable
-         | DragOver Step
-         | DragEnd Draggable
+         | DragOver Draggable
+         | DragEnd
 type SearchboxMsg = TextInput String
          | NewImages (Result Http.Error (List String))
          | HoverIngredient (Maybe Ingredient)
@@ -104,12 +104,9 @@ update msg model =
     DragStart drag -> 
         let draggable = model.drag
             newDraggable = { draggable | start = Just drag }
-        in ({ model | drag = newDraggable }, Cmd.none)
-    DragOver step ->
-        let draggable = model.drag
-            newDraggable = { draggable | over = Just step }
-        in ({ model | drag = newDraggable }, Cmd.none)
-    DragEnd end -> 
+        in ({ model | drag = newDraggable
+                    , selectedStep = Just drag.step }, Cmd.none)
+    DragOver end ->
         let recipeList = model.currentRecipe.recipe 
             currentRecipe = model.currentRecipe
             newRecipeList = case model.drag.start of 
@@ -118,7 +115,9 @@ update msg model =
                     else recipeList
                 Nothing   -> recipeList
             newRecipe = { currentRecipe | recipe = newRecipeList }
-        in ({ model | currentRecipe = newRecipe, drag = defaultDrag }, Cmd.none)
+            newDrag = Maybe.map (\a -> { a | pos = end.pos }) model.drag.start
+        in ({ model | currentRecipe = newRecipe, drag = DraggableState newDrag  }, Cmd.none)
+    DragEnd -> ({ model | drag = defaultDrag }, Cmd.none)
     SearchboxEvent evt -> case evt of
         TextInput newContent ->
           ({ model | search = newContent }, fetchImages newContent)
@@ -185,11 +184,13 @@ stepsView { selectedStep, currentRecipe, drag } =
           let position  = [("left", (calculatePosition step.ingredients) ++ "px")]
               emptySlot = div [style position, class "empty-slot"] [toHtml <| collage size size [emptyIngredient]]
               draggable = Draggable step pos
-              events = [onMouseDown (DragStart draggable), onMouseEnter (DragOver step), onMouseUp (DragEnd draggable), onClick (SelectStep step)]
-              dragClass = if (drag.start /= Nothing && drag.over == Just step) then "dragging" else ""
+              events = [ onMouseDown (DragStart draggable)
+                       , onMouseEnter (DragOver draggable)
+                       , onMouseUp (DragEnd)
+                       , onClick (SelectStep step)]
           in if (selectedStep == Just step) 
             then li (class "selected" :: events) [createHtml step, emptySlot]
-            else li (class dragClass  :: events) [createHtml step]
+            else li events [createHtml step]
       stepsLi = currentRecipe.recipe |> Recipe.getSteps >> List.indexedMap createLi
   in ul [class "no-list"] stepsLi
 
