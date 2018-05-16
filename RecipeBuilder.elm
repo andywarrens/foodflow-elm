@@ -35,7 +35,7 @@ main =
 ----------------------------------------
 type alias Model =
   { search              : String
-  , searchedIngredients : Either (List Ingredient) String
+  , searchedIngredients : Either String (List Ingredient)
   , hoverIngredient     : Maybe Ingredient
   , selectedStep        : Maybe Step
   , currentRecipe       : Recipe  
@@ -47,7 +47,7 @@ defaultDrag = { start = Nothing }
 defaultModel : String -> Model
 defaultModel searchTopic =
   { search              = searchTopic
-  , searchedIngredients = Either.Left []
+  , searchedIngredients = Either.Right []
   , hoverIngredient     = Nothing
   , selectedStep        = Just substep1a
   , currentRecipe       = easySalad
@@ -125,10 +125,10 @@ update msg model =
         NewImages (Ok newUrls) ->
             let urlToIngredient = Ingredient model.search 1 "g"
                 ingredients = List.map urlToIngredient newUrls
-            in ({ model | searchedIngredients = Either.Left ingredients }, Cmd.none)
+            in ({ model | searchedIngredients = Either.Right ingredients }, Cmd.none)
 
         NewImages (Err _) ->
-          ({ model | searchedIngredients = Either.Right "error while fetching" }, Cmd.none)
+          ({ model | searchedIngredients = Either.Left "error while fetching" }, Cmd.none)
 
         HoverIngredient ingr ->
           ({ model | hoverIngredient = ingr }, Cmd.none)
@@ -158,7 +158,11 @@ view model =
                 , onInput (SearchboxEvent << TextInput)
                 , value model.search 
                 , class "form-control" ] []
-        , ul [] (ingredientsToHtml model.hoverIngredient model.searchedIngredients) ]
+        , ul [] <| Either.unpack 
+                    (\err -> [li [] [ text ("error fetching urls: " ++ err) ]])
+                    (map <| ingredientToHtml model.hoverIngredient) 
+                    model.searchedIngredients
+        ]
       ]
     , hr [] []
     , div [ class "row" ] 
@@ -194,20 +198,16 @@ stepsView { selectedStep, currentRecipe, drag } =
       stepsLi = currentRecipe.recipe |> Recipe.getSteps >> List.indexedMap createLi
   in ul [class "no-list"] stepsLi
 
-ingredientsToHtml : Maybe Ingredient -> Either (List Ingredient) String -> List (Html Msg)
-ingredientsToHtml sel list =
-    case list of
-        Either.Right error -> [li [] [ text ("error fetching urls: " ++ error) ]]
-        Either.Left ingrs -> List.map (li [onClick AddIngredient] << List.singleton << ingredientToHtml sel) ingrs
-
 ingredientToHtml : Maybe Ingredient -> Ingredient -> Html Msg
 ingredientToHtml sel ingr = 
-  img [ src ingr.img
+  li [onClick AddIngredient] [
+    img [ src ingr.img
        , alt ingr.name
        , class (if (sel == Just ingr) then "selected-image" else "")
        , onMouseEnter (SearchboxEvent <| HoverIngredient (Just ingr))
        , onMouseLeave (SearchboxEvent <| HoverIngredient Nothing)
        ] []
+    ]
 
 -- HTTP
 ----------------------------------------
