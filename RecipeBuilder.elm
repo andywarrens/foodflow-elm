@@ -5,10 +5,11 @@ import Step exposing (Step, toForm)
 import Ingredient exposing (Ingredient, emptyIngredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
-import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground, size, cols, rows, tupleMap, createOutline)
+import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground
+                     ,size, cols, rows, tupleMap, createOutline)
 
 import Html exposing (Html, text, div, h1, h2, ul, li, a, input, img, hr, button)
-import Html.Attributes exposing (placeholder, style, class, alt, src, value)
+import Html.Attributes exposing (placeholder, style, class, alt, src, value, draggable)
 import Html.Events exposing (onInput, onClick, onMouseEnter, onMouseLeave, onMouseOver, onMouseDown, onMouseUp)
 import Element exposing (toHtml, show, right, leftAligned)
 import Text exposing (fromString)
@@ -41,9 +42,6 @@ type alias Model =
   , currentRecipe       : Recipe  
   , drag                : DraggableState }
 
-defaultDrag : DraggableState
-defaultDrag = { start = Nothing }
-
 defaultModel : String -> Model
 defaultModel searchTopic =
   { search              = searchTopic
@@ -51,13 +49,12 @@ defaultModel searchTopic =
   , hoverIngredient     = Nothing
   , selectedStep        = Just substep1a
   , currentRecipe       = easySalad
-  , drag                = defaultDrag }
+  , drag                = NotDragging }
 
 type alias Draggable =
     { step : Step
     , pos  : Int }
-type alias DraggableState = 
-    { start : Maybe Draggable }
+type DraggableState = NotDragging | Dragging Draggable
     
 
 -- UPDATE
@@ -103,21 +100,25 @@ update msg model =
           Nothing -> (model, Cmd.none)
     DragStart drag -> 
         let draggable = model.drag
-            newDraggable = { draggable | start = Just drag }
+            newDraggable = Dragging drag
         in ({ model | drag = newDraggable
                     , selectedStep = Just drag.step }, Cmd.none)
     DragOver end ->
         let recipeList = model.currentRecipe.recipe 
             currentRecipe = model.currentRecipe
-            newRecipeList = case model.drag.start of 
-                Just begin -> if (end.pos /= begin.pos)
+            newRecipeList = case model.drag of 
+                Dragging begin -> if (end.pos /= begin.pos)
                     then Recipe.moveStep recipeList begin.pos end.pos 
                     else recipeList
-                Nothing   -> recipeList
+                NotDragging   -> recipeList
             newRecipe = { currentRecipe | recipe = newRecipeList }
-            newDrag = Maybe.map (\a -> { a | pos = end.pos }) model.drag.start
-        in ({ model | currentRecipe = newRecipe, drag = DraggableState newDrag  }, Cmd.none)
-    DragEnd -> ({ model | drag = defaultDrag }, Cmd.none)
+            newDrag = case model.drag of
+                Dragging d -> Dragging { d | pos = end.pos }
+                NotDragging -> NotDragging
+        in ({ model | currentRecipe = newRecipe
+                    , drag = newDrag }, Cmd.none)
+    DragEnd -> 
+        ({ model | drag = NotDragging }, Cmd.none)
     SearchboxEvent evt -> case evt of
         TextInput newContent ->
           ({ model | search = newContent }, fetchImages newContent)
@@ -158,7 +159,7 @@ view model =
                 , onInput (SearchboxEvent << TextInput)
                 , value model.search 
                 , class "form-control" ] []
-        , ul [] <| Either.unpack 
+        , ul [class "ingredients-list"] <| Either.unpack 
                     (\err -> [li [] [ text ("error fetching urls: " ++ err) ]])
                     (map <| ingredientToHtml model.hoverIngredient) 
                     model.searchedIngredients
@@ -179,24 +180,38 @@ editStepView { currentRecipe } =
       li [] [ button [onClick AddStep] [ text "Add a step"] ]
 
 stepsView : Model -> Html Msg
-stepsView { selectedStep, currentRecipe, drag } =
-  let createHtml = Step.toForm
-        >> (\(form, width) -> collage (round width) size [form])
-        >> toHtml
-      calculatePosition = List.length >> toFloat >> (\a -> 5+a*0.8*(toFloat size)) >> toString
-      createLi pos step = 
-          let position  = [("left", (calculatePosition step.ingredients) ++ "px")]
-              emptySlot = div [style position, class "empty-slot"] [toHtml <| collage size size [emptyIngredient]]
-              draggable = Draggable step pos
-              events = [ onMouseDown (DragStart draggable)
-                       , onMouseEnter (DragOver draggable)
-                       , onMouseUp (DragEnd)
-                       , onClick (SelectStep step)]
-          in if (selectedStep == Just step) 
-            then li (class "selected" :: events) [createHtml step, emptySlot]
-            else li events [createHtml step]
-      stepsLi = currentRecipe.recipe |> Recipe.getSteps >> List.indexedMap createLi
-  in ul [class "no-list"] stepsLi
+stepsView model =
+  let stepsLi = model.currentRecipe.recipe |> Recipe.getSteps >> List.indexedMap (stepToLi model)
+  in ul [class "no-list steps-list"] stepsLi
+
+stepToLi : Model -> Int -> Step -> Html Msg
+stepToLi { drag, selectedStep } pos step = 
+  let dragObj = Draggable step pos
+      dragBtnEvents = [ draggable "true"
+                      , on "dragstart" (DragStart dragObj)
+                      , on "dragenter" (DragOver dragObj)
+                      , on "dragend" DragEnd ]
+      ingrEvents = case drag of
+        NotDragging -> [ onClick (SelectStep step) ]
+        Dragging d  -> [ on "dragenter" (DragOver dragObj)
+                       , on "dragend" DragEnd ]
+      dragBtn = img ([src "img/web/drag.png", class "drag-btn"] ++ dragBtnEvents) []
+  in if (selectedStep == Just step) 
+    then li [class "selected"] [dragBtn, 
+      div ingrEvents [stepToHtml step, createEmptyStepSlot (List.length step.ingredients) ]]
+    else li [] [dragBtn, div ingrEvents [stepToHtml step] ]
+
+stepToHtml : Step -> Html Msg
+stepToHtml = Step.toForm
+  >> (\(form, width) -> collage (round width) size [form])
+  >> toHtml
+
+createEmptyStepSlot : Int -> Html Msg
+createEmptyStepSlot n =
+  let offset    = toFloat >> (\a -> 5+a*0.8*(toFloat size)+30) >> toString
+  in div [ style [("left", (offset n) ++ "px")]
+         , class "empty-slot"]
+         [toHtml <| collage size size [emptyIngredient]]
 
 ingredientToHtml : Maybe Ingredient -> Ingredient -> Html Msg
 ingredientToHtml sel ingr = 
@@ -208,6 +223,9 @@ ingredientToHtml sel ingr =
        , onMouseLeave (SearchboxEvent <| HoverIngredient Nothing)
        ] []
     ]
+
+on : String -> Msg -> Html.Attribute Msg
+on event msg = Html.Events.on event (Decode.succeed msg)
 
 -- HTTP
 ----------------------------------------

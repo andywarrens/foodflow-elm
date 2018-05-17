@@ -1,0 +1,74 @@
+<html>
+ <head>
+  <title>DnD test </title>
+  <style>
+/* Prevent the text contents of draggable elements from being selectable. */
+[draggable] {
+  user-select: none;
+  -webkit-user-drag: element;
+}
+div {
+  height: 150px;
+  width: 150px;
+  float: left;
+  border: 2px solid #666666;
+  background-color: #ccc;
+  margin-right: 5px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 3px #000;
+  text-align: center;
+  cursor: move;
+}
+div header {
+  color: #fff;
+  padding: 5px;
+  background-color: rgb(79,79,79);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.over {
+  border: 2px dashed #000;
+}
+</style>
+ </head>
+ <body>
+ <div class="draggable" draggable><header>1</header></div>
+ <div class="draggable" draggable><header>2</header></div>
+ <div class="draggable" draggable><header>3</header></div>
+ <div><header>4</header></div>
+ <div><header>5</header></div>
+ <div><header>6</header></div>
+ <script>
+function handleDragStart(e) {
+  this.style.opacity = '0.4';  // this / e.target is the source node.
+}
+
+function handleDragOver(e) {
+  if (e.preventDefault) {
+    e.preventDefault(); // Necessary. Allows us to drop.
+  }
+
+  e.dataTransfer.dropEffect = 'move';  // See the section on the DataTransfer object.
+
+  return false;
+}
+
+function handleDragEnter(e) {
+  // this / e.target is the current hover target.
+  this.classList.add('over');
+}
+
+function handleDragLeave(e) {
+  this.classList.remove('over');  // this / e.target is previous target element.
+}
+
+var cols = document.querySelectorAll('.draggable');
+[].forEach.call(cols, function(col) {
+  col.addEventListener('dragstart', handleDragStart, false);
+  col.addEventListener('dragenter', handleDragEnter, false);
+  col.addEventListener('dragover', handleDragOver, false);
+  col.addEventListener('dragleave', handleDragLeave, false);
+});
+ </script>
+ </body>
+</html>
