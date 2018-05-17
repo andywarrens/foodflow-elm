@@ -5,10 +5,11 @@ import Step exposing (Step, toForm)
 import Ingredient exposing (Ingredient, emptyIngredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
+import Msg exposing (..)
 import Util exposing (Url, stylesheet, stylesheetcdn, initialBackground
                      ,size, cols, rows, tupleMap, createOutline)
 
-import Html exposing (Html, text, div, h1, h2, ul, li, a, input, img, hr, button)
+import Html exposing (Html, text, div, h1, h2, ul, li, a, input, img, hr, button, span)
 import Html.Attributes exposing (placeholder, style, class, alt, src, value, draggable)
 import Html.Events exposing (onInput, onClick, onMouseEnter, onMouseLeave, onMouseOver, onMouseDown, onMouseUp)
 import Element exposing (toHtml, show, right, leftAligned)
@@ -50,27 +51,10 @@ defaultModel searchTopic =
   , selectedStep        = Just substep1a
   , currentRecipe       = easySalad
   , drag                = NotDragging }
-
-type alias Draggable =
-    { step : Step
-    , pos  : Int }
-type DraggableState = NotDragging | Dragging Draggable
     
 
 -- UPDATE
 ----------------------------------------
-type Msg = SearchboxEvent SearchboxMsg
-         | SelectRecipe Recipe
-         | AddStep
-         | SelectStep Step
-         | AddIngredient
-         | DragStart Draggable
-         | DragOver Draggable
-         | DragEnd
-type SearchboxMsg = TextInput String
-         | NewImages (Result Http.Error (List String))
-         | HoverIngredient (Maybe Ingredient)
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
@@ -191,15 +175,19 @@ stepToLi { drag, selectedStep } pos step =
                       , on "dragstart" (DragStart dragObj)
                       , on "dragenter" (DragOver dragObj)
                       , on "dragend" DragEnd ]
-      ingrEvents = case drag of
+      liEvents = case drag of
         NotDragging -> [ onClick (SelectStep step) ]
         Dragging d  -> [ on "dragenter" (DragOver dragObj)
                        , on "dragend" DragEnd ]
       dragBtn = img ([src "img/web/drag.png", class "drag-btn"] ++ dragBtnEvents) []
-  in if (selectedStep == Just step) 
-    then li [class "selected"] [dragBtn, 
-      div ingrEvents [stepToHtml step, createEmptyStepSlot (List.length step.ingredients) ]]
-    else li [] [dragBtn, div ingrEvents [stepToHtml step] ]
+  in case drag of
+    NotDragging -> if (selectedStep == Just step) 
+        then li (class "selected" :: liEvents)
+             [dragBtn, stepToHtml step, createEmptyStepSlot (List.length step.ingredients) ]
+        else li liEvents [dragBtn, stepToHtml step]
+    Dragging d  -> if (d.step == step)
+        then li (class "blurred" :: liEvents) [stepToHtml step, createEmptyStepSlot (List.length step.ingredients) ]
+        else li liEvents [dragBtn, stepToHtml step]
 
 stepToHtml : Step -> Html Msg
 stepToHtml = Step.toForm
