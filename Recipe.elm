@@ -35,9 +35,11 @@ toForm (x, y) color isFirstRun list highlightRecipe =
       move (x,y) <| group [ moveY (-0.35*blockSize) <| outlined (solid color) (rect 1 (1.2*0.5*blockSize))
                           , outlined (solid red) (square 10) ]
     Node step rest  ->
-      group [ move (x, y) <| outlined (solid color) (rect 1 (1.2*blockSize))
-            , move (x+0.5*0.08*blockSize, y) <| outlined (solid color) (rect (0.08*blockSize) 1)
-            , (move (x+blockSize*0.6,y) <| (Step.toForm >> Tuple.first) step)
+        let bulletWidth = 0.08*blockSize
+            moveStepToMiddle (s, width) = move (x+0.5*width+bulletWidth+10,y) s
+        in group [ move (x, y) <| outlined (solid color) (rect 1 (1.2*blockSize))
+            , move (x+0.5*bulletWidth, y) <| outlined (solid color) (rect bulletWidth 1)
+            , step |> Step.toForm >> moveStepToMiddle
             , (toForm (x, y+blockSize*1.2) color False rest highlightRecipe) ]
     Merge recipeLeft recipeRight -> 
       let (left, right) = (.recipe recipeLeft, .recipe recipeRight) 
@@ -162,7 +164,7 @@ saladeKip =
       substep2b = { ingredients = [ zongedroogdtomaten, littlegem ], action = "Snijd in stukjes en reepjes" }
       substep1b = { ingredients = [ macadamia ], action = "Hak in grove stukjes" }
       riceStep =  { ingredients = [ rijst ], action = "Rijst koken" }
-      step1a = Node substep1a (Node substep2a End)
+      step1a = Node substep2a End
       step1b = Node substep1b (Node substep2b End)
       subrecipe1a = { recipe= step1a, name= "Groenten grillen", comments = "" }
       subrecipe2 = { recipe= step1b, name= "Groenten snijden", comments = "" }

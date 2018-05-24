@@ -1,0 +1,37 @@
+<!--------------------------------------------------------------------
+--
+-- index.html
+-- LocalStorage top-level HTML
+-- Copyright (c) 2018 Bill St. Clair <billstclair@gmail.com>
+-- Some rights reserved.
+-- Distributed under the MIT License
+-- See LICENSE.txt
+--
+---------------------------------------------------------------------->
+
+<html>
+  <head>
+    <title>FoodFlow</title>
+    <script type='text/javascript' src='build/index.js'></script>
+    <script type='text/javascript' src='js/localstorage/js/ElmLocalStoragePorts.js'></script>
+  </head>
+  <body>
+    <script type='text/javascript'>
+
+// Read your saved model here, if you have one.
+// Or do it in your init function, via getItem.
+var initialModel = null;
+
+// Change "PortExample" to your application's module name.
+var app = Elm.Main.fullscreen(initialModel);
+
+ElmLocalStoragePorts.subscribe(app);
+
+// If you use non-standard names for the ports, you need to name them:
+//
+// ElmLocalStoragePorts.subscribe(app, "getItem", "setItem", "clear", "receiveItem", "listKeys");
+//
+
+    </script>
+  </body>
+</html>

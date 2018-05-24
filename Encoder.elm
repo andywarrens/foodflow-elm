@@ -1,4 +1,4 @@
-module Encoder exposing (..)
+module Encoder exposing (recipeJson, decodeRecipe)
 
 import Recipe exposing (Recipe, defaultRecipe)
 import Step exposing (Step, defaultStep)
