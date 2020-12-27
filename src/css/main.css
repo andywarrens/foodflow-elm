@@ -1,0 +1,16 @@
+[draggable] {
+  user-select: none;
+  -webkit-user-drag: element;
+}
+body { cursor: default; }
+.ingredients-list img { width: 100px; height: 100px }
+.dragging, .selected, .selected-image { border: 1px solid red; box-sizing: border-box; }
+.dragging, .selected { position: relative }
+.dragging { border-color: blue }
+.empty-slot { position: absolute; top: 0 }
+.no-list { list-style-type: none; margin:0; padding:0; user-select: none; }
+.steps-list div { display: inline-block }     
+.steps-list li { height: 106px }
+.steps-list li span { line-height: 106px }
+.blurred { opacity: 0.4; padding-left: 35px; }
+.drag-btn { margin: 35px 10px 0 0; width: 25px; height: 25px; vertical-align: top }
