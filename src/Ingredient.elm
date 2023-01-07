@@ -1,5 +1,6 @@
 module Ingredient exposing (Ingredient, ingredients, toForm, emptyIngredient,
-                            turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
+                            turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, 
+                            littlegem, macadamia, rijst, onion, tomato, pan)
 
 import Util 
 
@@ -18,12 +19,6 @@ type alias Ingredient =
     , qty  : Float
     , unit : String
     , img  : String }
-
-ingredients : List Ingredient
-ingredients = 
-    [ Ingredient "Tomato" 4 "piece" "img/tomato.png"
-    , Ingredient "Onion" 1 "piece" "img/onion.png"
-    , Ingredient "Turkey" 220 "gram" "img/turkey.png" ]
 
 toForm : Ingredient -> Collage msg
 toForm { img } =
@@ -50,12 +45,21 @@ emptyIngredient =
     in group [ cross, graySquare ] |> transform
         
 --- Example ingredients
-turkey             = Ingredient "Turkey" 220 "gram" "img/turkey.jpg"
-oliveoil           = Ingredient "Olive Oil" 1 "el" "img/olijfolie.jpg"
-pezo               = Ingredient "Salt & Pepper" 1 "snuifje" "img/pezo.jpg"
-artisjokhart       = Ingredient "Artisjokhart" 3 "stuks" "img/artisjokhart.jpg"
-zongedroogdtomaten = Ingredient "Zongedroogde tomaten" 4 "stuks" "img/zongedroogd-tomaten.jpg"
-littlegem          = Ingredient "Little gem" 1 "kropje" "img/littlegem.jpg"
-macadamia          = Ingredient "Macadamia noten" 1 "handvol" "img/macadamia.jpg"
-rijst              = Ingredient "Rice" 1 "zakje" "img/rice.png"
+turkey              = Ingredient "Turkey" 220 "gram" "img/turkey.png"
+oliveoil            = Ingredient "Olive Oil" 1 "el" "img/olijfolie.jpg"
+pezo                = Ingredient "Salt & Pepper" 1 "snuifje" "img/pezo.jpg"
+artisjokhart        = Ingredient "Artisjokhart" 3 "stuks" "img/artisjokhart.jpg"
+zongedroogdtomaten  = Ingredient "Zongedroogde tomaten" 4 "stuks" "img/zongedroogd-tomaten.jpg"
+littlegem           = Ingredient "Little gem" 1 "kropje" "img/littlegem.jpg"
+macadamia           = Ingredient "Macadamia noten" 1 "handvol" "img/macadamia.jpg"
+rijst               = Ingredient "Rice" 1 "zakje" "img/rice.png"
+onion               = Ingredient "Onion" 1 "piece" "img/onion.png"
+tomato              = Ingredient "Tomato" 4 "piece" "img/tomato.png"
+pan                 = Ingredient "Pan" 1 "piece" "img/pan.png"
 
+ingredients : List Ingredient
+ingredients = 
+    [ tomato
+    , onion
+    , turkey
+    ]

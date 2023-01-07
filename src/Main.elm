@@ -1,6 +1,6 @@
 module Main exposing (..)
 
-import Recipe exposing (Recipe, drawRecipe, defaultRecipe)
+import Recipe exposing (Recipe, drawRecipe, defaultRecipe, recipes)
 import Ingredient exposing (Ingredient)
 --import Encoder exposing (recipeJson, decodeRecipe)
 
@@ -71,7 +71,7 @@ defaultModel searchTopic =
   , ingredientsUrls    = []
   , selectedIngredient = Nothing
   , selectedRecipe     = defaultRecipe  
-  , recipeDB           = [ defaultRecipe ]
+  , recipeDB           = recipes
   , selectedSubRecipe  = Nothing 
   , searchboxState     = Closed
   }

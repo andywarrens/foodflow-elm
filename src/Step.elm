@@ -1,4 +1,6 @@
-module Step exposing (Step, addStep, defaultStep, defaultStep2, toForm, width)
+module Step exposing (Step, addStep, defaultStep, defaultStep2, 
+  toForm, width,
+  cutOnion, cutChicken, cutTomato, heatPan)
 
 import Ingredient exposing (..)
 import Util exposing (calculateMove, cols, rows, size, initialBackground)
@@ -28,6 +30,27 @@ defaultStep2 =
         [ { name = "Spaghetti", qty = 500, unit = "gram", img = "img/spaghetti.png" }
         , { name = "Water", qty = 2, unit = "litre", img = "img/water.png" } ]
     , action = "Boil" }
+
+cutOnion : Step
+cutOnion =
+  { ingredients = [ onion ]
+  , action = "Cut"
+  }
+cutTomato : Step
+cutTomato =
+  { ingredients = [ tomato ]
+  , action = "Cut"
+  }
+cutChicken : Step
+cutChicken = 
+  { ingredients = [ turkey ]
+  , action = "Cut"
+  }
+heatPan : Step
+heatPan = 
+ { ingredients = [ pan ]
+ , action = "Cook"
+ }
 
       
 width : Step -> Int
