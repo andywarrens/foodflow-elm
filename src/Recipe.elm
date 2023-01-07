@@ -1,6 +1,7 @@
 module Recipe exposing (..)
 
-import Step exposing (Step, defaultStep, toForm, width)
+import Step exposing (Step, defaultStep, toForm, width,
+    cutOnion, cutTomato, cutChicken, heatPan)
 import Ingredient exposing (Ingredient
                             , turkey, oliveoil, pezo, artisjokhart, zongedroogdtomaten, littlegem, macadamia, rijst)
 
@@ -180,12 +181,18 @@ saladeKip =
 
 defaultRecipe : Recipe
 defaultRecipe = 
-    let subrecipe1 = { recipe = (Node defaultStep (Node defaultStep End)),
-                        name = "Meng groenten", comments = "" }
-        subrecipe2 = { recipe = (Node defaultStep2 End)
+    let cutVeggies = { recipe = (Node cutOnion (Node cutTomato End) )
+                     , name = "Snij groenten", comments = "" }
+        cutChickenRec = { recipe = (Node cutChicken End)
+                     , name = "Snij kip", comments = "" }
+        mengAll = Merge cutVeggies cutChickenRec
+        bakGroentenKip = { recipe = Node heatPan mengAll,
+                           name = "Bak groenten en kip", comments = "" }
+        kookSpaghetti = { recipe = (Node defaultStep2 End)
                      , name = "Kook spaghetti", comments = "" }
-        dummyrecipe1 = { recipe = Merge subrecipe1 subrecipe2
-                       , name = "Meng groenten & kook spaghetti", comments = "" }
-    in { recipe = Merge dummyrecipe1 subrecipe1
+    in { recipe = Merge bakGroentenKip kookSpaghetti
        , name = "Spaghetti arrabiata"
        , comments = "" }
+
+recipes : List Recipe
+recipes = [ defaultRecipe, saladeKip, easySalad ]
